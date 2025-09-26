@@ -4,6 +4,7 @@ return {
   ["Potassium"] = true,
   ["Swift"] = true,
   ["Codex"] = true,
+  ["Xeno"] = true,
   ["Delta"] = true,
   ["Wave"] = true,
   ["bunni.lol"] = true,
