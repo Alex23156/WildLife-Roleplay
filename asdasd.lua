@@ -753,6 +753,11 @@ local function clickKey()
     return clicked
 end
 
+local function stopAutoShoot()
+    isAutoShooting = false
+    currentTarget = nil
+end
+
 local function unJailProcess()
     if antiJailRunning then return end
     antiJailRunning = true
@@ -919,12 +924,6 @@ local function startAutoShoot(target)
         end
     end)
 end
-
-local function stopAutoShoot()
-    isAutoShooting = false
-    currentTarget = nil
-end
-
 local function autoReloadSystem()
     task.spawn(function()
         while true do
