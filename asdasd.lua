@@ -1,7 +1,7 @@
 
 script_key = 'X1C2V3B4N5M6A7S8D9F0G1H2J3K4L5POI'
 getgenv().AutofarmSettings = {
-  ["Fps"] = 5,
+  ["Fps"] = 60,
   ["Modalidad"] = 1,
   ["AntiAFK"] = true,
   ["Webhook"] = {
@@ -33,6 +33,7 @@ end
 
 -- Variables del sistema Anti-Jail
 local antiJailRunning = false
+local jailProcessActive = false
 local keyItemName = "[Key]"
 
 local isAutoShooting = false
@@ -755,8 +756,13 @@ end
 local function unJailProcess()
     if antiJailRunning then return end
     antiJailRunning = true
+    jailProcessActive = true  -- BLOQUEAR TODO
     
     Status.Text = "Anti-Jail: Detected jail time"
+    
+    -- Detener cualquier disparo activo
+    stopAutoShoot()
+    limpiarVuelo()
     
     local keyTarget = workspace:FindFirstChild("Ignored") and 
                       workspace.Ignored:FindFirstChild("Shop") and 
@@ -765,13 +771,11 @@ local function unJailProcess()
     if not keyTarget or not keyTarget:FindFirstChild("Head") then
         Status.Text = "Anti-Jail: Key shop not found"
         antiJailRunning = false
+        jailProcessActive = false
         return
     end
     
-    local keyHead = keyTarget.Head
     local keyPosition = Vector3.new(-271, 24, -245)
-    
-    -- Usar sistema de vuelo existente
     local targetCFrame = CFrame.new(keyPosition + Vector3.new(0, 3, 0))
     Status.Text = "Anti-Jail: Flying to key shop..."
     
@@ -784,9 +788,7 @@ local function unJailProcess()
     -- Comprar llave
     Status.Text = "Anti-Jail: Buying key..."
     for i = 1, 5 do
-        if clickKey() then
-            break
-        end
+        clickKey()
         task.wait(0.5)
     end
     
@@ -803,33 +805,47 @@ local function unJailProcess()
                 pcall(function()
                     humanoid:EquipTool(backpack[keyItemName])
                 end)
-                task.wait(1)
+                task.wait(2)  -- Esperar más tiempo
             end
         end
     end
     
-    -- Verificar si salió de jail
-    task.wait(2)
-    local df = player:FindFirstChild("DataFolder")
-    local info = df and df:FindFirstChild("Information")
-    local jailValue = info and info:FindFirstChild("Jail")
-    
-    if jailValue and tonumber(jailValue.Value) == 0 then
-        Status.Text = "Anti-Jail: Successfully escaped!"
+    -- Esperar a que se use la llave y salga de jail
+    Status.Text = "Anti-Jail: Waiting to escape..."
+    local maxWait = 15
+    local waited = 0
+    while waited < maxWait do
+        task.wait(1)
+        waited = waited + 1
         
-        -- Verificar LMG y munición antes de continuar
-        if verificarYRecargarLMG() then
-            Status.Text = "Anti-Jail: Ready to farm"
-        else
-            Status.Text = "Anti-Jail: Failed to prepare LMG"
+        local stillJailed, currentJailTime = checkJailStatus()
+        if not stillJailed then
+            Status.Text = "Anti-Jail: Successfully escaped!"
+            break
         end
-        
-        teleportWithRandomFall()
-    else
-        Status.Text = "Anti-Jail: Failed to escape"
     end
     
+    -- Verificación final
+    local finalCheck, _ = checkJailStatus()
+    if finalCheck then
+        Status.Text = "Anti-Jail: Still jailed, restarting..."
+        antiJailRunning = false
+        jailProcessActive = false
+        task.wait(2)
+        unJailProcess()  -- Reintentar
+        return
+    end
+    
+    -- Preparar LMG
+    if verificarYRecargarLMG() then
+        Status.Text = "Anti-Jail: Ready to resume"
+    end
+    
+    teleportWithRandomFall()
+    task.wait(2)
+    
     antiJailRunning = false
+    jailProcessActive = false  
 end
 
 local function checkJailStatus()
@@ -914,14 +930,18 @@ local function autoReloadSystem()
         while true do
             task.wait(0.5)
             
-            -- PRIMERO VERIFICAR SI TIENE LMG EQUIPADA
+            -- DETENER SI ESTÁ EN PROCESO DE JAIL
+            if jailProcessActive then
+                task.wait(2)
+                continue
+            end
+            
             local char = player.Character
             if not char or not char:FindFirstChild("[LMG]") then
-                -- Si no tiene LMG equipada, intentar equiparla
                 if equiparLMG() then
-                    task.wait(0.3) -- Esperar que se equipe
+                    task.wait(0.3)
                 else
-                    task.wait(1) -- Esperar antes de intentar de nuevo
+                    task.wait(1)
                     continue
                 end
             end
@@ -1295,17 +1315,20 @@ player.CharacterAdded:Connect(function(char)
             serverHop()
             return
         end
+        
+        task.wait(0.5)
+        local isJailed, jailTime = checkJailStatus()
+        if isJailed then
+            Status.Text = "Anti-Jail: Jailed after respawn (" .. jailTime .. "s)"
+            unJailProcess()
+            return  
+        end
+        
+        -- Solo si NO está jaileado, continuar normal
         root.CFrame = CFrame.new(0, 15000, 0)
         task.wait(0.2)
         teleportWithRandomFall()
         optimizarJugador(char)
-        -- 
-        task.wait(1)
-        local isJailed, jailTime = checkJailStatus()
-        if isJailed then
-            Status.Text = "Anti-Jail: Detected jail after respawn (" .. jailTime .. "s)"
-            unJailProcess()
-        end
         
         if Kamaik.yaProcesadoKO then
             task.wait(0.1)
@@ -1609,6 +1632,12 @@ local noCashierTimer = 0
 task.spawn(function()
     while true do
         task.wait(0.1)
+        if jailProcessActive then
+            Status.Text = "Anti-Jail: Processing escape..."
+            task.wait(2)
+            continue
+        end
+        
         while Kamaik.AutoFarm.isStomping do
             Status.Text = "KO! Waiting for respawn"
             task.wait(1)
