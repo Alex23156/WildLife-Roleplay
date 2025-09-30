@@ -718,20 +718,35 @@ end
 
 local function clickKey()
     local shop = workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("Shop")
-    if not shop then return false end
-    local keyItem = shop:FindFirstChild("[Key] - $137")
-    if not keyItem then return false end
-
-    local head = keyItem:FindFirstChild("Head")
-    if not head then return false end
-
-    local clicked = false
-    local cd = head:FindFirstChildWhichIsA("ClickDetector", true)
-    if cd and typeof(fireclickdetector) == "function" then
-        pcall(function() fireclickdetector(cd) end)
-        clicked = true
+    if not shop then 
+        warn("Shop not found")
+        return false 
     end
     
+    local keyItem = shop:FindFirstChild("[Key] - $137")
+    if not keyItem then 
+        warn("Key item not found in shop")
+        return false 
+    end
+
+    local clicked = false
+    
+    -- Intentar con ClickDetector en todos los descendants
+    for _, desc in ipairs(keyItem:GetDescendants()) do
+        if desc:IsA("ClickDetector") then
+            if typeof(fireclickdetector) == "function" then
+                local success = pcall(function() 
+                    fireclickdetector(desc) 
+                end)
+                if success then
+                    clicked = true
+                    break
+                end
+            end
+        end
+    end
+    
+    -- Si no funcionó con ClickDetector, intentar con ProximityPrompt
     if not clicked then
         for _, desc in ipairs(keyItem:GetDescendants()) do
             if desc:IsA("ProximityPrompt") then
@@ -746,6 +761,7 @@ local function clickKey()
                     end
                 end)
                 clicked = true
+                break
             end
         end
     end
