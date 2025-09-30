@@ -9,6 +9,7 @@ getgenv().AutofarmSettings = {
     ["Interval"] = 60
   },
   ["ServerHoop"] = {
+    ["Toggle"] = true,  -- NUEVO: Activar/desactivar sistema de server hop
     ["Type"] = 1,
     ["Deaths"] = 0,
     ["Blacklisted_IDs"] = {}
@@ -29,6 +30,21 @@ local armasNecesarias = {
 local mainEvent = RS:WaitForChild("MainEvent", 10)
 if not mainEvent then
     warn("No encontré ReplicatedStorage.MainEvent")
+end
+
+local codesList = {
+    "BRAINROT",
+    "LUXE",
+    "TURBO"
+}
+
+for _, currentCode in ipairs(codesList) do
+    local argsTable = {
+        "EnterPromoCode",
+        currentCode
+    }
+    mainEvent:FireServer(unpack(argsTable))
+    task.wait(10)
 end
 
 -- Variables del sistema Anti-Jail
@@ -1188,6 +1204,11 @@ local function serverHop()
 end
 
 local function checkBlacklistedPlayers()
+    -- Si ServerHoop está desactivado, no hacer nada
+    if not getgenv().AutofarmSettings.ServerHoop.Toggle then
+        return false
+    end
+    
     local blacklistedIDs = getgenv().AutofarmSettings.ServerHoop.Blacklisted_IDs or {}
     local combinedBlacklist = {}
     
@@ -1242,6 +1263,18 @@ for _, plr in ipairs(game.Players:GetPlayers()) do
 end
 
 Players.PlayerAdded:Connect(function(newPlayer)
+    -- Si ServerHoop está desactivado, solo optimizar sin hacer hop
+    if not getgenv().AutofarmSettings.ServerHoop.Toggle then
+        newPlayer.CharacterAdded:Connect(function(char)
+            task.wait(3)
+            optimizarJugador(char)
+        end)
+        if newPlayer.Character then
+            optimizarJugador(newPlayer.Character)
+        end
+        return
+    end
+    
     local blacklistedIDs = getgenv().AutofarmSettings.ServerHoop.Blacklisted_IDs or {}
     local combinedBlacklist = {}
 
@@ -1268,6 +1301,9 @@ Players.PlayerAdded:Connect(function(newPlayer)
 end)
 
 local function checkDeaths()
+    if not getgenv().AutofarmSettings.ServerHoop.Toggle then
+        return
+    end
     local maxDeaths = getgenv().AutofarmSettings.ServerHoop.Deaths or 0
     if maxDeaths > 0 and Kamaik.AutoFarm.deaths >= maxDeaths then
         Kamaik.AutoFarm.deaths = 0
@@ -1278,6 +1314,9 @@ end
 local kickDetected = false
 
 local function executeServerHop()
+    if not getgenv().AutofarmSettings.ServerHoop.Toggle then
+        return
+    end
     if kickDetected then return end
     kickDetected = true
     task.wait(0.5)
@@ -1876,9 +1915,18 @@ task.spawn(function()
             stuckTimer = stuckTimer + 1
             
             if stuckTimer >= 35 then
-                Status.Text = "Server-Hop, bug detect"
-                serverHop()
-                break
+                -- Si ServerHoop está desactivado, solo resetear en lugar de hacer hop
+                if not getgenv().AutofarmSettings.ServerHoop.Toggle then
+                    Status.Text = "Bug detected - Resetting character..."
+                    if player.Character and player.Character:FindFirstChild("Humanoid") then
+                        player.Character.Humanoid.Health = 0
+                    end
+                    stuckTimer = 0
+                else
+                    Status.Text = "Server-Hop, bug detect"
+                    serverHop()
+                    break
+                end
             end
         else
             stuckTimer = 0
