@@ -1,4 +1,5 @@
 
+
 script_key = 'X1C2V3B4N5M6A7S8D9F0G1H2J3K4L5POI'
 getgenv().AutofarmSettings = {
   ["Fps"] = 60,
