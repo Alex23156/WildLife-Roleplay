@@ -1,5 +1,4 @@
 
-
 script_key = 'X1C2V3B4N5M6A7S8D9F0G1H2J3K4L5POI'
 getgenv().AutofarmSettings = {
   ["Fps"] = 60,
@@ -759,6 +758,21 @@ local function stopAutoShoot()
     currentTarget = nil
 end
 
+local function checkJailStatus()
+    local df = player:FindFirstChild("DataFolder")
+    local info = df and df:FindFirstChild("Information")
+    local jailValue = info and info:FindFirstChild("Jail")
+    
+    if jailValue then
+        local jailTime = tonumber(jailValue.Value)
+        if jailTime and jailTime > 0 then
+            return true, jailTime
+        end
+    end
+    
+    return false, 0
+end
+
 local function unJailProcess()
     if antiJailRunning then return end
     antiJailRunning = true
@@ -852,21 +866,6 @@ local function unJailProcess()
     
     antiJailRunning = false
     jailProcessActive = false  
-end
-
-local function checkJailStatus()
-    local df = player:FindFirstChild("DataFolder")
-    local info = df and df:FindFirstChild("Information")
-    local jailValue = info and info:FindFirstChild("Jail")
-    
-    if jailValue then
-        local jailTime = tonumber(jailValue.Value)
-        if jailTime and jailTime > 0 then
-            return true, jailTime
-        end
-    end
-    
-    return false, 0
 end
 
 local function startAutoShoot(target)
