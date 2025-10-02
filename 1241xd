@@ -974,13 +974,9 @@ local function autoReloadSystem()
             end
             
             local char = player.Character
-            if not char or not char:FindFirstChild("[LMG]") then
-                if equiparLMG() then
-                    task.wait(0.3)
-                else
-                    task.wait(1)
-                    continue
-                end
+            if not char then
+                task.wait(1)
+                continue
             end
             
             local balas, ammoVal = obtenerBalas()
@@ -1556,11 +1552,6 @@ local function superDisparo(target)
     
     -- Detener disparo y desequipar arma
     stopAutoShoot()
-    if charHumanoid then
-        charHumanoid:UnequipTools()
-    end
-    
-    -- VERIFICAR SI EL CAJERO MURIÓ REALMENTE
     local targetMuerto = not target or not target.Parent or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0
     return targetMuerto
 end
