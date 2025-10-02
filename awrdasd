@@ -1814,10 +1814,6 @@ task.spawn(function()
                             cajero = target
                         })
                     end
-                    
-                    -- TP rápido y directo al siguiente
-                    teleportWithRandomFall()
-                    task.wait(0.2)
                 end
             else
                 noCashierTimer += 0.1
@@ -1943,7 +1939,7 @@ task.spawn(function()
                 -- Esperar 5 segundos antes del siguiente
                 Status.Text = "Waiting before next ATM..."
                 teleportWithRandomFall()
-                task.wait(2)
+                task.wait(1.5)
                 
                 i = i + 1
             end
@@ -2012,3 +2008,4 @@ task.spawn(function()
         end
     end
 end)
+
