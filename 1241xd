@@ -27,6 +27,11 @@ local armasNecesarias = {
     ["[AUG]"] = true
 }
 
+-- Sistema de 2 fases
+local cajerosRotos = {}
+local FASE_ROMPIENDO = true
+
+
 local mainEvent = RS:WaitForChild("MainEvent", 10)
 if not mainEvent then
     warn("No encontré ReplicatedStorage.MainEvent")
@@ -679,7 +684,7 @@ local function comprarAmmo()
         humanoid:UnequipTools()
         task.wait(0.3) -- Pequeña pausa para que procese el desequipamiento
     end
-    local ammoTP = Vector3.new(-616.1832120117188, 20.300010681152344, -305.33917236328125)
+    local ammoTP = Vector3.new(-278.0326843261719, 49.36509323120117, -213.39381408691406)
     -- offset arriba de 3 studs
     local targetCFrame = CFrame.new(ammoTP + Vector3.new(0, 3, 0))
 
@@ -1683,7 +1688,6 @@ end)
 
 local noCashierTimer = 0
 
--- BUCLE PRINCIPAL 
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -1710,7 +1714,6 @@ task.spawn(function()
             end
         end
         
-        -- pausa de 10 segundos después de reaparecer
         if Kamaik.AutoFarm.lastStompTime then
             local tiempoTranscurrido = tick() - Kamaik.AutoFarm.lastStompTime
             local tiempoRestante = 10 - tiempoTranscurrido
@@ -1723,14 +1726,23 @@ task.spawn(function()
             
             Kamaik.AutoFarm.lastStompTime = nil
         end
-        Status.Text = "Looking for ATM"
 
-        local target = getNearestCashier()
-        if target and target:FindFirstChild("Head") and target:FindFirstChild("Humanoid") then
-            if target ~= Kamaik.AutoFarm.lastTarget then
-                Kamaik.AutoFarm.lastTarget = target
-                local posCajero = target:FindFirstChild("Head") and target.Head.Position
-                if posCajero then
+        -- FASE 1: ROMPER CAJEROS
+        if FASE_ROMPIENDO then
+            local totalRotos = 0
+            for _ in pairs(cajerosRotos) do
+                totalRotos = totalRotos + 1
+            end
+            
+            Status.Text = "Breaking ATMs (" .. totalRotos .. ")"
+            
+            local target = getNearestCashier()
+            
+            if target and target:FindFirstChild("Head") and target:FindFirstChild("Humanoid") then
+                if target ~= Kamaik.AutoFarm.lastTarget then
+                    Kamaik.AutoFarm.lastTarget = target
+                    local posCajero = target.Head.Position
+                    
                     local char = player.Character
                     if char then
                         local humanoid = char:FindFirstChildOfClass("Humanoid")
@@ -1738,9 +1750,8 @@ task.spawn(function()
                             humanoid:UnequipTools()
                         end
                     end
-                    Status.Text = "Random Tp + Fall"
                     
-                    local config = obtenerConfigCajero(target.Head.Position)
+                    local config = obtenerConfigCajero(posCajero)
                     local posicionVuelo = Vector3.new(
                         posCajero.X + config.offsetX,
                         posCajero.Y + config.offsetY,  
@@ -1748,133 +1759,137 @@ task.spawn(function()
                     )
                     local headCFrame = target.Head.CFrame
                     local x, y, z = headCFrame:ToEulerAnglesXYZ()
-                    local entreMedio = CFrame.new(posicionVuelo) * CFrame.Angles(x, y, z)
-                    activarVueloNuevo(entreMedio)
+                    activarVueloNuevo(CFrame.new(posicionVuelo) * CFrame.Angles(x, y, z))
                 end
-            end
-            
-            local humanoid = target:FindFirstChild("Humanoid")
-            if humanoid then
-            local initialHealth, detectadoDano, muerto = humanoid.Health, false, false
-            
-            --  PRIMERO EQUIPAR EL ARMA
-            if Status.Text == "Resuming farm..." then
-                task.wait(1) -- Dar tiempo a autoReloadSystem
-            end
-
-            Status.Text = "Equipping AUG..."
-            if not equiparAUG() then
-                Status.Text = "No AUG available - getting weapon..."
-                if attemptGetAUG() then
-                    Status.Text = "AUG obtained, equipping..."
+                
+                local humanoid = target:FindFirstChild("Humanoid")
+                if humanoid then
+                    Status.Text = "Equipping AUG..."
                     if not equiparAUG() then
-                        Status.Text = "Failed to equip AUG"
-                        Kamaik.AutoFarm.lastTarget = nil
+                        if attemptGetAUG() then
+                            if not equiparAUG() then
+                                Kamaik.AutoFarm.lastTarget = nil
+                                task.wait(2)
+                                continue
+                            end
+                        else
+                            Kamaik.AutoFarm.lastTarget = nil
+                            task.wait(5)
+                            continue
+                        end
+                    end
+                    
+                    task.wait(0.3)
+                    local balas = obtenerBalas()
+                    if not balas or balas <= 0 then
+                        recargar()
                         task.wait(2)
+                        
+                        local nuevasBalas = obtenerBalas()
+                        if not nuevasBalas or nuevasBalas <= 0 then
+                            comprarAmmo()
+                            task.wait(3)
+                            recargar()
+                            task.wait(1)
+                        end
+                        
+                        local balasFinales = obtenerBalas()
+                        if not balasFinales or balasFinales <= 0 then
+                            Kamaik.AutoFarm.lastTarget = nil
+                            task.wait(5)
+                            continue
+                        end
+                    end
+                    
+                    Status.Text = "Shooting ATM"
+                    local detectadoDano = superDisparo(target)
+                    
+                    if not target or not target.Parent or not target:FindFirstChild("Humanoid") then
+                        Kamaik.AutoFarm.lastTarget = nil
                         continue
                     end
-                else
-                    Status.Text = "Failed to get AUG"
-                    Kamaik.AutoFarm.lastTarget = nil
-                    task.wait(5)
-                    continue
-                end
-            end
-            
-            --  VERIFICAR MUNICIÓN CON EL ARMA EQUIPADA
-            task.wait(0.3) -- Pequeña pausa para asegurar que el arma está equipada
-            local balas = obtenerBalas()
-            if not balas or balas <= 0 then
-                Status.Text = "No ammo - triggering reload..."
-                --  FORZAR RELOAD INMEDIATO
-                recargar()
-                task.wait(2)
-                
-                -- Verificar si se recargó
-                local nuevasBalas = obtenerBalas()
-                if not nuevasBalas or nuevasBalas <= 0 then
-                    Status.Text = "Reload failed - buying ammo..."
-                    comprarAmmo()
-                    task.wait(3)
-                    recargar()
+                    
+                    local muerto = (target.Humanoid.Health <= 0)
+
+                    if not detectadoDano or not muerto then
+                        task.spawn(function() SacarBlacklist(target) end) 
+                        Kamaik.AutoFarm.lastTarget = nil
+                        continue
+                    end
+                    
+                    -- Guardar posición del cajero roto
+                    cajerosRotos[target] = target.Head.Position
+                    
+                    teleportWithRandomFall()
                     task.wait(1)
                 end
-                
-                -- Verificar una vez más
-                local balasFinales = obtenerBalas()
-                if not balasFinales or balasFinales <= 0 then
-                    Status.Text = "Critical: No ammo available"
-                    Kamaik.AutoFarm.lastTarget = nil
-                    task.wait(5)
-                    continue
+            else
+                noCashierTimer += 0.1
+                if noCashierTimer >= 5 then
+                    local totalRotos = 0
+                    for _ in pairs(cajerosRotos) do
+                        totalRotos = totalRotos + 1
+                    end
+                    
+                    if totalRotos > 0 then
+                        Status.Text = "All ATMs broken! Collecting..."
+                        FASE_ROMPIENDO = false
+                    else
+                        teleportWithRandomFall()
+                    end
+                    noCashierTimer = 0
                 end
             end
+        
+        -- FASE 2: RECOGER DINERO
+        else
+            local posiciones = {}
+            for _, pos in pairs(cajerosRotos) do
+                table.insert(posiciones, pos)
+            end
             
-            Status.Text = "Shooting ATM"
-            detectadoDano = superDisparo(target)
-            
-            --  VERIFICAR SI EL TARGET SIGUE SIENDO VÁLIDO DESPUÉS DEL DISPARO
-            if not target or not target.Parent or not target:FindFirstChild("Humanoid") then
-                Status.Text = "Target became invalid"
-                Kamaik.AutoFarm.lastTarget = nil
+            if #posiciones == 0 then
+                FASE_ROMPIENDO = true
+                cajerosRotos = {}
                 continue
             end
             
-            muerto = (target.Humanoid.Health <= 0)
-
-            if not detectadoDano then
-                Status.Text = "ATM Mission Failed - no damage detected"
-                task.spawn(function() SacarBlacklist(target) end) 
-                Kamaik.AutoFarm.lastTarget = nil
-                continue
-            end
-
-            if not muerto then
-                Status.Text = "ATM Mission Failed - target survived"
-                task.spawn(function() SacarBlacklist(target) end)
-                Kamaik.AutoFarm.lastTarget = nil
-                continue
-            end
-            
-            Status.Text = "ATM eliminated successfully"
-        end
-
-            -- Esperar drops de dinero
-            local dropFolder = Workspace:WaitForChild("Ignored"):WaitForChild("Drop")
-            local maxWait, waited, foundDrop = 3, 0, false
-            while waited < maxWait do
-                for _, drop in ipairs(dropFolder:GetChildren()) do
-                    if drop:IsA("Part") and (drop.Position - target.Head.Position).Magnitude <= 10 then
-                        foundDrop = true
-                        break
+            for i, pos in ipairs(posiciones) do
+                Status.Text = "Collecting (" .. i .. "/" .. #posiciones .. ")"
+                
+                local char = player.Character
+                if char then
+                    local humanoid = char:FindFirstChildOfClass("Humanoid")
+                    if humanoid then
+                        humanoid:UnequipTools()
                     end
                 end
-                if foundDrop then break end
-                task.wait(0.1)
-                waited += 0.1
-            end
-
-            task.wait(0.05)
-
-            -- Recoger dinero
-            local dineroRecogido, intentos = false, 0
-            while not dineroRecogido and intentos < 10 do
-                Status.Text = "Collecting Money"
-                dineroRecogido = recogerDineroCerca()
-                intentos += 1
+                
+                local config = obtenerConfigCajero(pos)
+                local posVuelo = Vector3.new(
+                    pos.X + config.offsetX,
+                    pos.Y + config.offsetY - 4,  
+                    pos.Z + config.offsetZ   
+                )
+                
+                activarVueloNuevo(CFrame.new(posVuelo))
+                task.wait(1.5)
+                
+                local intentos = 0
+                while intentos < 10 do
+                    if recogerDineroCerca() then break end
+                    intentos += 1
+                    task.wait(0.5)
+                end
+                
+                teleportWithRandomFall()
                 task.wait(0.5)
             end
-            teleportWithRandomFall()
-            task.wait(1)
-        else
-            noCashierTimer += 0.1
-            if noCashierTimer >= 5 then
-                Status.Text = "No ATM found, random tp..."
-                teleportWithRandomFall()
-                noCashierTimer = 0
-            end
+            
+            cajerosRotos = {}
+            FASE_ROMPIENDO = true
+            task.wait(2)
         end
-
     end
 end)
 
