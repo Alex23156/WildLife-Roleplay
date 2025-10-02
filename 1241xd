@@ -1818,7 +1818,10 @@ task.spawn(function()
                     end
                     
                     -- Guardar posición del cajero roto
-                    cajerosRotos[target] = target.Head.Position
+                    table.insert(cajerosRotos, {
+                        posicion = target.Head.Position,
+                        cajero = target
+                    })
                     
                     teleportWithRandomFall()
                     task.wait(1)
@@ -1843,20 +1846,62 @@ task.spawn(function()
         
         -- FASE 2: RECOGER DINERO
         else
-            local posiciones = {}
-            for _, pos in pairs(cajerosRotos) do
-                table.insert(posiciones, pos)
-            end
-            
-            if #posiciones == 0 then
+            if #cajerosRotos == 0 then
                 FASE_ROMPIENDO = true
-                cajerosRotos = {}
                 continue
             end
             
-            for i, pos in ipairs(posiciones) do
-                Status.Text = "Collecting (" .. i .. "/" .. #posiciones .. ")"
+            for i, data in ipairs(cajerosRotos) do
+                Status.Text = "Collecting (" .. i .. "/" .. #cajerosRotos .. ")"
                 
+                -- Verificar si el cajero se regeneró
+                if data.cajero and data.cajero.Parent and data.cajero:FindFirstChild("Humanoid") and data.cajero.Humanoid.Health > 0 then
+                    Status.Text = "ATM regenerated! Breaking again (" .. i .. "/" .. #cajerosRotos .. ")"
+                    
+                    local char = player.Character
+                    if char then
+                        local humanoid = char:FindFirstChildOfClass("Humanoid")
+                        if humanoid then
+                            humanoid:UnequipTools()
+                        end
+                    end
+                    
+                    local config = obtenerConfigCajero(data.posicion)
+                    local posVuelo = Vector3.new(
+                        data.posicion.X + config.offsetX,
+                        data.posicion.Y + config.offsetY,  
+                        data.posicion.Z + config.offsetZ   
+                    )
+                    local headCFrame = data.cajero.Head.CFrame
+                    local x, y, z = headCFrame:ToEulerAnglesXYZ()
+                    activarVueloNuevo(CFrame.new(posVuelo) * CFrame.Angles(x, y, z))
+                    task.wait(0.5)
+                    
+                    if not equiparAUG() then
+                        if attemptGetAUG() then
+                            equiparAUG()
+                        end
+                    end
+                    
+                    task.wait(0.3)
+                    local balas = obtenerBalas()
+                    if not balas or balas <= 0 then
+                        recargar()
+                        task.wait(2)
+                        local nuevasBalas = obtenerBalas()
+                        if not nuevasBalas or nuevasBalas <= 0 then
+                            comprarAmmo()
+                            task.wait(3)
+                            recargar()
+                            task.wait(1)
+                        end
+                    end
+                    
+                    superDisparo(data.cajero)
+                    task.wait(0.5)
+                end
+                
+                -- Recoger dinero
                 local char = player.Character
                 if char then
                     local humanoid = char:FindFirstChildOfClass("Humanoid")
@@ -1865,16 +1910,17 @@ task.spawn(function()
                     end
                 end
                 
-                local config = obtenerConfigCajero(pos)
+                local config = obtenerConfigCajero(data.posicion)
                 local posVuelo = Vector3.new(
-                    pos.X + config.offsetX,
-                    pos.Y + config.offsetY - 4,  
-                    pos.Z + config.offsetZ   
+                    data.posicion.X + config.offsetX,
+                    data.posicion.Y + config.offsetY - 4,  
+                    data.posicion.Z + config.offsetZ   
                 )
                 
                 activarVueloNuevo(CFrame.new(posVuelo))
                 task.wait(1.5)
                 
+                -- Recoger con intentos
                 local intentos = 0
                 while intentos < 10 do
                     if recogerDineroCerca() then break end
@@ -1882,10 +1928,12 @@ task.spawn(function()
                     task.wait(0.5)
                 end
                 
+                -- Esperar 5 segundos antes de ir al siguiente
                 teleportWithRandomFall()
-                task.wait(0.5)
+                task.wait(5)
             end
             
+            Status.Text = "Collection complete! Restarting..."
             cajerosRotos = {}
             FASE_ROMPIENDO = true
             task.wait(2)
