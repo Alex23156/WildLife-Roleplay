@@ -66,10 +66,10 @@ for i, v in pairs(workspace:GetDescendants()) do
     end
 end
 
-if not getgenv or not getgenv().PayloadAccess then
-    player:Kick("nigga.")
-    return
-end
+-- if not getgenv or not getgenv().PayloadAccess then
+ ---  player:Kick("nigga.")
+ --   return
+-- end
 
 -- Invalida la flag para que no se re-use
 getgenv().PayloadAccess = nil
@@ -265,6 +265,7 @@ end
 MainFrame.Size = UDim2.new(1, 0, 1, 0)
 MainFrame.Position = UDim2.new(0, 0, 0, 0)
 MainFrame.ZIndex = 1
+MainFrame.Visible = false
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 MainFrame.Parent = ScreenGui
 
