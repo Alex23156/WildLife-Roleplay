@@ -22,15 +22,14 @@ local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
 local botIDs = {}
 
--- Variables del sistema AUG
+-- Variables del sistema LMG
 local armasNecesarias = {
-    ["[AUG]"] = true
+    ["[LMG]"] = true
 }
 
 -- Sistema de 2 fases
 local cajerosRotos = {}
 local FASE_ROMPIENDO = true
-
 
 local mainEvent = RS:WaitForChild("MainEvent", 10)
 if not mainEvent then
@@ -73,7 +72,7 @@ end
 
 --if not getgenv or not getgenv().PayloadAccess then
   --  player:Kick("nigga.")
- --   return
+  --  return
 --end
 
 -- Invalida la flag para que no se re-use
@@ -311,7 +310,7 @@ Status.Size = UDim2.new(0, 200, 0, 50)
 Status.Position = UDim2.new(0.25, 0, 0.808, 0)
 Status.BackgroundTransparency = 1
 Status.TextSize = 17
-Status.Text = "Loading AUG System..."
+Status.Text = "Loading LMG System..."
 Status.ZIndex = 32
 Status.TextColor3 = Color3.fromRGB(104, 104, 104)
 Status.Parent = Principal
@@ -408,7 +407,7 @@ local Kamaik = {
     targettp = nil,
 }
 
--- FUNCIONES AUG SYSTEM
+-- FUNCIONES LMG SYSTEM
 local function tieneTodasLasArmas()
     local backpack = player:FindFirstChild("Backpack")
     local character = player.Character
@@ -441,19 +440,19 @@ local function tieneTodasLasArmas()
     return true
 end
 
-local function clickAUG()
+local function clickLMG()
     local shop = workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("Shop")
     if not shop then return false end
-    local AUG = shop:FindFirstChild("[AUG] - $2131")
-    if not AUG then return false end
+    local lmg = shop:FindFirstChild("[LMG] - $4098")
+    if not lmg then return false end
 
     local clicked = false
-    local cd = AUG:FindFirstChildWhichIsA("ClickDetector", true)
+    local cd = lmg:FindFirstChildWhichIsA("ClickDetector", true)
     if cd and typeof(fireclickdetector) == "function" then
         pcall(function() fireclickdetector(cd) end)
         clicked = true
     end
-    for _, desc in ipairs(AUG:GetDescendants()) do
+    for _, desc in ipairs(lmg:GetDescendants()) do
         if desc:IsA("ProximityPrompt") then
             pcall(function()
                 if typeof(fireproximityprompt) == "function" then
@@ -553,14 +552,14 @@ function activarVueloNuevo(targetCFrame)
 end
 
 
-local function attemptGetAUG(timeoutSeconds)
+local function attemptGetLMG(timeoutSeconds)
     timeoutSeconds = timeoutSeconds or 30
     local character = player.Character or player.CharacterAdded:Wait()
     local HRP = character:WaitForChild("HumanoidRootPart")
     
-    local augTP = Vector3.new(-273.0481872558594, 49.3634033203125, -213.31240844726562)
+    local lmgTP = Vector3.new(-620.8822631835938, 20.29998779296875, -305.3392639160156)
     -- offset arriba de 3 studs
-    local targetCFrame = CFrame.new(augTP + Vector3.new(0, 3, 0))
+    local targetCFrame = CFrame.new(lmgTP + Vector3.new(0, 3, 0))
 
     -- activar vuelo hacia esa posición
     pcall(function()
@@ -570,7 +569,7 @@ local function attemptGetAUG(timeoutSeconds)
     
     while not tieneTodasLasArmas() and (tick() - startTime) < timeoutSeconds do
         task.wait(1)
-        clickAUG()
+        clickLMG()
     end
     
     if tieneTodasLasArmas() then
@@ -580,23 +579,23 @@ local function attemptGetAUG(timeoutSeconds)
     end
 end
 
-local function equiparAUG()
+local function equiparLMG()
     local char = player.Character
     if not char then return false end
     
     local charHumanoid = char:FindFirstChildOfClass("Humanoid")
     if not charHumanoid then return false end
     
-    -- Si ya tiene AUG equipada, devolver true
-    local augTool = char:FindFirstChild("[AUG]")
-    if augTool then return true end
+    -- Si ya tiene LMG equipada, devolver true
+    local lmgTool = char:FindFirstChild("[LMG]")
+    if lmgTool then return true end
     
-    -- Buscar AUG en la mochila
-    local backspackAUG = player.Backpack:FindFirstChild("[AUG]")
-    if backspackAUG then
-        charHumanoid:EquipTool(backspackAUG)
+    -- Buscar LMG en la mochila
+    local backpackLMG = player.Backpack:FindFirstChild("[LMG]")
+    if backpackLMG then
+        charHumanoid:EquipTool(backpackLMG)
         task.wait(0.5) -- Esperar a que se equipe
-        return char:FindFirstChild("[AUG]") ~= nil
+        return char:FindFirstChild("[LMG]") ~= nil
     end
     
     return false
@@ -604,7 +603,7 @@ end
 
 local function obtenerBalas()
     local tool = player.Character:FindFirstChildWhichIsA("Tool")
-    if tool and tool.Name == "[AUG]" then
+    if tool and tool.Name == "[LMG]" then
         local ammoVal = tool:FindFirstChild("Ammo") or tool:FindFirstChild("Clip") or tool:FindFirstChild("Bullets")
         if ammoVal and ammoVal:IsA("IntValue") then
             return ammoVal.Value, ammoVal
@@ -615,7 +614,7 @@ end
 
 local function recargar()
     local tool = player.Character:FindFirstChildWhichIsA("Tool")
-    if tool and tool.Name == "[AUG]" then
+    if tool and tool.Name == "[LMG]" then
         mainEvent:FireServer("Reload", tool)
         return true
     end
@@ -625,7 +624,7 @@ end
 local function clickAmmo()
     local shop = workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("Shop")
     if not shop then return false end
-    local ammo = shop:FindFirstChild("90 [AUG Ammo] - $87")
+    local ammo = shop:FindFirstChild("200 [LMG Ammo] - $328")
     if not ammo then return false end
 
     local clicked = false
@@ -683,7 +682,7 @@ local function comprarAmmo()
         humanoid:UnequipTools()
         task.wait(0.3) -- Pequeña pausa para que procese el desequipamiento
     end
-    local ammoTP = Vector3.new(-278.0326843261719, 49.36509323120117, -213.39381408691406)
+    local ammoTP = Vector3.new(-616.1832120117188, 20.300010681152344, -305.33917236328125)
     -- offset arriba de 3 studs
     local targetCFrame = CFrame.new(ammoTP + Vector3.new(0, 3, 0))
 
@@ -702,18 +701,18 @@ local function comprarAmmo()
 end
 
 -- ============= SISTEMA ANTI-JAIL =============
-local function verificarYRecargarAUG()
+local function verificarYRecargarLMG()
     local char = player.Character
     if not char then return false end
     
-    -- Verificar si tiene AUG equipada
-    if not equiparAUG() then
-        Status.Text = "Anti-Jail: Getting AUG..."
-        if not attemptGetAUG() then
+    -- Verificar si tiene LMG equipada
+    if not equiparLMG() then
+        Status.Text = "Anti-Jail: Getting LMG..."
+        if not attemptGetLMG() then
             return false
         end
         task.wait(0.5)
-        if not equiparAUG() then
+        if not equiparLMG() then
             return false
         end
     end
@@ -895,8 +894,8 @@ local function unJailProcess()
         return
     end
     
-    -- Preparar AUG
-    if verificarYRecargarAUG() then
+    -- Preparar LMG
+    if verificarYRecargarLMG() then
         Status.Text = "Anti-Jail: Ready to resume"
     end
     
@@ -931,11 +930,11 @@ local function startAutoShoot(target)
         local char = player.Character
         if not char then return end
         
-        local augTool = char:FindFirstChild("[AUG]")
-        if not augTool or not augTool:FindFirstChild("Handle") then
-            local backspackAUG = player.Backpack:FindFirstChild("[AUG]")
-            if backspackAUG then
-                backspackAUG.Parent = char
+        local lmgTool = char:FindFirstChild("[LMG]")
+        if not lmgTool or not lmgTool:FindFirstChild("Handle") then
+            local backpackLMG = player.Backpack:FindFirstChild("[LMG]")
+            if backpackLMG then
+                backpackLMG.Parent = char
                 task.wait(0.1)
                 return
             else
@@ -948,8 +947,8 @@ local function startAutoShoot(target)
         local ok, err = pcall(function()
             mainEvent:FireServer(
                 "ShootGun",
-                augTool.Handle,
-                augTool.Handle.CFrame.Position,
+                lmgTool.Handle,
+                lmgTool.Handle.CFrame.Position,
                 head.Position,
                 head,
                 Vector3.new(0, 0, -1)
@@ -975,8 +974,8 @@ local function autoReloadSystem()
             end
             
             local char = player.Character
-            if not char or not char:FindFirstChild("[AUG]") then
-                if equiparAUG() then
+            if not char or not char:FindFirstChild("[LMG]") then
+                if equiparLMG() then
                     task.wait(0.3)
                 else
                     task.wait(1)
@@ -1463,6 +1462,7 @@ local function getNearestCashier()
 end
 
 
+-- FUNCIÓN MODIFICADA PARA USAR LMG EN VEZ DE PUÑOS
 local function superDisparo(target)
     if not target or not target:FindFirstChild("Head") then 
         return false 
@@ -1480,20 +1480,20 @@ local function superDisparo(target)
     local charHumanoid = char:FindFirstChildOfClass("Humanoid")
     if not charHumanoid then return false end
 
-    -- Equipar AUG si no está equipada
-    local augTool = char:FindFirstChild("[AUG]")
-    if not augTool then
-        local backspackAUG = player.Backpack:FindFirstChild("[AUG]")
-        if backspackAUG then
-            backspackAUG.Parent = char
+    -- Equipar LMG si no está equipada
+    local lmgTool = char:FindFirstChild("[LMG]")
+    if not lmgTool then
+        local backpackLMG = player.Backpack:FindFirstChild("[LMG]")
+        if backpackLMG then
+            backpackLMG.Parent = char
             task.wait(0.2)
-            augTool = char:FindFirstChild("[AUG]")
+            lmgTool = char:FindFirstChild("[LMG]")
         else
             return false
         end
     end
 
-    if not augTool or not augTool:FindFirstChild("Handle") then
+    if not lmgTool or not lmgTool:FindFirstChild("Handle") then
         return false
     end
 
@@ -1626,6 +1626,7 @@ local function SacarBlacklist(target)
     Kamaik.AutoFarm.ignorados[target] = nil
 end
 
+-- INICIALIZAR SISTEMA LMG
 task.spawn(function()
     -- PRIORIDAD 1: Verificar y resolver jail ANTES de cualquier otra cosa
     local isJailed, jailTime = checkJailStatus()
@@ -1658,13 +1659,13 @@ task.spawn(function()
         end
     end
     
-    -- PRIORIDAD 2: Inicializar sistema AUG solo después de confirmar que NO está en jail
-    Status.Text = "Initializing AUG System..."
+    -- PRIORIDAD 2: Inicializar sistema LMG solo después de confirmar que NO está en jail
+    Status.Text = "Initializing LMG System..."
     
     if not tieneTodasLasArmas() then
-        Status.Text = "Getting AUG..."
-        if attemptGetAUG() then
-            Status.Text = "AUG obtained!"
+        Status.Text = "Getting LMG..."
+        if attemptGetLMG() then
+            Status.Text = "LMG obtained!"
         end
     end
     
@@ -1687,6 +1688,7 @@ end)
 
 local noCashierTimer = 0
 
+-- BUCLE PRINCIPAL 
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -1762,9 +1764,9 @@ task.spawn(function()
                 
                 local humanoid = target:FindFirstChild("Humanoid")
                 if humanoid then
-                    if not equiparAUG() then
-                        if attemptGetAUG() then
-                            if not equiparAUG() then
+                    if not equiparLMG() then
+                        if attemptGetLMG() then
+                            if not equiparLMG() then
                                 Kamaik.AutoFarm.lastTarget = nil
                                 task.wait(2)
                                 continue
@@ -1876,9 +1878,9 @@ task.spawn(function()
                     activarVueloNuevo(CFrame.new(posVuelo) * CFrame.Angles(x, y, z))
                     task.wait(0.3)
                     
-                    if not equiparAUG() then
-                        if attemptGetAUG() then
-                            equiparAUG()
+                    if not equiparLMG() then
+                        if attemptGetLMG() then
+                            equiparLMG()
                         end
                     end
                     
@@ -1948,11 +1950,9 @@ task.spawn(function()
                 end
                 
                 -- Esperar 5 segundos antes del siguiente
-                Status.Text = "Waiting 5s before next ATM..."
-                task.wait(5)
-                
+                Status.Text = "Waiting before next ATM..."
                 teleportWithRandomFall()
-                task.wait(0.3)
+                task.wait(4)
                 
                 i = i + 1
             end
