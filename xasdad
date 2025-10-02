@@ -66,10 +66,10 @@ for i, v in pairs(workspace:GetDescendants()) do
     end
 end
 
--- if not getgenv or not getgenv().PayloadAccess then
- ---  player:Kick("nigga.")
- --   return
--- end
+if not getgenv or not getgenv().PayloadAccess then
+    player:Kick("nigga.")
+    return
+end
 
 -- Invalida la flag para que no se re-use
 getgenv().PayloadAccess = nil
@@ -265,7 +265,6 @@ end
 MainFrame.Size = UDim2.new(1, 0, 1, 0)
 MainFrame.Position = UDim2.new(0, 0, 0, 0)
 MainFrame.ZIndex = 1
-MainFrame.Visible = false
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 MainFrame.Parent = ScreenGui
 
@@ -584,8 +583,8 @@ local function equiparAUG()
     if not charHumanoid then return false end
     
     -- Si ya tiene AUG equipada, devolver true
-    local lmgTool = char:FindFirstChild("[AUG]")
-    if lmgTool then return true end
+    local augTool = char:FindFirstChild("[AUG]")
+    if augTool then return true end
     
     -- Buscar AUG en la mochila
     local backspackAUG = player.Backpack:FindFirstChild("[AUG]")
@@ -1489,7 +1488,7 @@ local function superDisparo(target)
         end
     end
 
-    if not lmgTool or not lmgTool:FindFirstChild("Handle") then
+    if not augTool or not augTool:FindFirstChild("Handle") then
         return false
     end
 
