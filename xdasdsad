@@ -1633,7 +1633,6 @@ task.spawn(function()
         Status.Text = "Anti-Jail: Detected jail (" .. jailTime .. "s)"
         unJailProcess()
         
-        -- Esperar hasta confirmar que salió de jail
         local maxWaitTime = 30
         local waitedTime = 0
         while waitedTime < maxWaitTime do
@@ -1649,7 +1648,6 @@ task.spawn(function()
             Status.Text = "Anti-Jail: Waiting to escape... (" .. currentJailTime .. "s)"
         end
         
-        -- Si después de 30 segundos sigue en jail, intentar de nuevo
         local finalCheck, _ = checkJailStatus()
         if finalCheck then
             Status.Text = "Anti-Jail: Retrying escape..."
@@ -1658,14 +1656,27 @@ task.spawn(function()
         end
     end
     
-    -- PRIORIDAD 2: Inicializar sistema LMG solo después de confirmar que NO está en jail
+    -- PRIORIDAD 2: Inicializar sistema LMG
     Status.Text = "Initializing LMG System..."
     
-    if not tieneTodasLasArmas() then
+    -- Verificar si tiene el arma
+    local tieneArma = tieneTodasLasArmas()
+    
+    if not tieneArma then
+        -- NO TIENE ARMA: Comprar arma Y munición
         Status.Text = "Getting LMG..."
         if attemptGetLMG() then
-            Status.Text = "LMG obtained!"
+            Status.Text = "LMG obtained! Buying ammo..."
+            comprarAmmo()
+            task.wait(2)
+            Status.Text = "LMG and ammo ready!"
         end
+    else
+        -- SÍ TIENE ARMA: Solo comprar munición
+        Status.Text = "LMG detected! Buying ammo..."
+        comprarAmmo()
+        task.wait(2)
+        Status.Text = "Ammo purchased!"
     end
     
     -- Iniciar sistema de auto-reload
@@ -1831,72 +1842,36 @@ task.spawn(function()
                     noCashierTimer = 0
                 end
             end
-        -- FASE 2: RECOGER DINERO
         else
             if #cajerosRotos == 0 then
                 FASE_ROMPIENDO = true
                 continue
             end
+            
+            -- PREPARACIÓN INICIAL ANTES DE RECOGER
+            Status.Text = "Preparing to collect money..."
+            
             local char = player.Character
             if char then
+                -- Equipar LMG
+                if equiparLMG() then
+                    task.wait(0.3)
+                    -- Intentar recargar (sin importar si tiene balas o no)
+                    recargar()
+                    task.wait(1)
+                end
+                
+                -- Desequipar arma para recoger
                 local humanoid = char:FindFirstChildOfClass("Humanoid")
                 if humanoid then
                     humanoid:UnequipTools()
                 end
             end
-                
             
             local i = 1
             while i <= #cajerosRotos do
                 local data = cajerosRotos[i]
                 Status.Text = "Collecting (" .. i .. "/" .. #cajerosRotos .. ")"
-                
-                -- Verificar si el cajero se regeneró
-                if data.cajero and data.cajero.Parent and data.cajero:FindFirstChild("Humanoid") and data.cajero.Humanoid.Health > 0 then
-                    Status.Text = "ATM regenerated! Breaking again (" .. i .. "/" .. #cajerosRotos .. ")"
-                    
-                    local char = player.Character
-                    if char then
-                        local humanoid = char:FindFirstChildOfClass("Humanoid")
-                        if humanoid then
-                            humanoid:UnequipTools()
-                        end
-                    end
-                    
-                    local config = obtenerConfigCajero(data.posicion)
-                    local posVuelo = Vector3.new(
-                        data.posicion.X + config.offsetX,
-                        data.posicion.Y + config.offsetY,  
-                        data.posicion.Z + config.offsetZ   
-                    )
-                    local headCFrame = data.cajero.Head.CFrame
-                    local x, y, z = headCFrame:ToEulerAnglesXYZ()
-                    activarVueloNuevo(CFrame.new(posVuelo) * CFrame.Angles(x, y, z))
-                    task.wait(0.3)
-                    
-                    if not equiparLMG() then
-                        if attemptGetLMG() then
-                            equiparLMG()
-                        end
-                    end
-                    
-                    task.wait(0.2)
-                    local balas = obtenerBalas()
-                    if not balas or balas <= 0 then
-                        recargar()
-                        task.wait(2)
-                        local nuevasBalas = obtenerBalas()
-                        if not nuevasBalas or nuevasBalas <= 0 then
-                            comprarAmmo()
-                            task.wait(3)
-                            recargar()
-                            task.wait(1)
-                        end
-                    end
-                    
-                    superDisparo(data.cajero)
-                    task.wait(0.3)
-                end
                 
                 -- Teleportarse directamente a recoger
                 local config = obtenerConfigCajero(data.posicion)
@@ -1943,7 +1918,35 @@ task.spawn(function()
                 i = i + 1
             end
             
-            Status.Text = "Collection complete! Restarting..."
+            -- DESPUÉS DE RECOGER TODO: Verificar munición antes de volver a romper
+            Status.Text = "Collection complete! Checking ammo..."
+            
+            local char = player.Character
+            if char then
+                -- Equipar LMG
+                if equiparLMG() then
+                    task.wait(0.3)
+                    -- Verificar munición
+                    local balas = obtenerBalas()
+                    if not balas or balas <= 0 then
+                        Status.Text = "Reloading after collection..."
+                        recargar()
+                        task.wait(2)
+                        
+                        -- Si después de recargar sigue sin balas, comprar
+                        local nuevasBalas = obtenerBalas()
+                        if not nuevasBalas or nuevasBalas <= 0 then
+                            Status.Text = "Buying ammo before breaking ATMs..."
+                            comprarAmmo()
+                            task.wait(3)
+                            recargar()
+                            task.wait(1)
+                        end
+                    end
+                end
+            end
+            
+            Status.Text = "Ready to break ATMs again!"
             cajerosRotos = {}
             FASE_ROMPIENDO = true
             task.wait(2)
