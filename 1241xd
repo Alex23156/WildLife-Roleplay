@@ -270,7 +270,6 @@ end
 MainFrame.Size = UDim2.new(1, 0, 1, 0)
 MainFrame.Position = UDim2.new(0, 0, 0, 0)
 MainFrame.ZIndex = 1
-MainFrame.Visible = false
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 MainFrame.Parent = ScreenGui
 
@@ -1727,7 +1726,6 @@ task.spawn(function()
             Kamaik.AutoFarm.lastStompTime = nil
         end
 
-        -- FASE 1: ROMPER CAJEROS
         if FASE_ROMPIENDO then
             local totalRotos = 0
             for _ in pairs(cajerosRotos) do
@@ -1764,7 +1762,6 @@ task.spawn(function()
                 
                 local humanoid = target:FindFirstChild("Humanoid")
                 if humanoid then
-                    Status.Text = "Equipping AUG..."
                     if not equiparAUG() then
                         if attemptGetAUG() then
                             if not equiparAUG() then
@@ -1779,7 +1776,7 @@ task.spawn(function()
                         end
                     end
                     
-                    task.wait(0.3)
+                    task.wait(0.2)
                     local balas = obtenerBalas()
                     if not balas or balas <= 0 then
                         recargar()
@@ -1817,14 +1814,15 @@ task.spawn(function()
                         continue
                     end
                     
-                    -- Guardar posición del cajero roto
+                    -- Guardar cajero en orden
                     table.insert(cajerosRotos, {
                         posicion = target.Head.Position,
                         cajero = target
                     })
                     
+                    -- TP rápido y directo al siguiente
                     teleportWithRandomFall()
-                    task.wait(1)
+                    task.wait(0.2)
                 end
             else
                 noCashierTimer += 0.1
@@ -1843,7 +1841,6 @@ task.spawn(function()
                     noCashierTimer = 0
                 end
             end
-        
         -- FASE 2: RECOGER DINERO
         else
             if #cajerosRotos == 0 then
@@ -1851,7 +1848,9 @@ task.spawn(function()
                 continue
             end
             
-            for i, data in ipairs(cajerosRotos) do
+            local i = 1
+            while i <= #cajerosRotos do
+                local data = cajerosRotos[i]
                 Status.Text = "Collecting (" .. i .. "/" .. #cajerosRotos .. ")"
                 
                 -- Verificar si el cajero se regeneró
@@ -1875,7 +1874,7 @@ task.spawn(function()
                     local headCFrame = data.cajero.Head.CFrame
                     local x, y, z = headCFrame:ToEulerAnglesXYZ()
                     activarVueloNuevo(CFrame.new(posVuelo) * CFrame.Angles(x, y, z))
-                    task.wait(0.5)
+                    task.wait(0.3)
                     
                     if not equiparAUG() then
                         if attemptGetAUG() then
@@ -1883,7 +1882,7 @@ task.spawn(function()
                         end
                     end
                     
-                    task.wait(0.3)
+                    task.wait(0.2)
                     local balas = obtenerBalas()
                     if not balas or balas <= 0 then
                         recargar()
@@ -1898,10 +1897,10 @@ task.spawn(function()
                     end
                     
                     superDisparo(data.cajero)
-                    task.wait(0.5)
+                    task.wait(0.3)
                 end
                 
-                -- Recoger dinero
+                -- Desequipar arma para recoger
                 local char = player.Character
                 if char then
                     local humanoid = char:FindFirstChildOfClass("Humanoid")
@@ -1910,6 +1909,7 @@ task.spawn(function()
                     end
                 end
                 
+                -- Teleportarse directamente a recoger
                 local config = obtenerConfigCajero(data.posicion)
                 local posVuelo = Vector3.new(
                     data.posicion.X + config.offsetX,
@@ -1918,19 +1918,43 @@ task.spawn(function()
                 )
                 
                 activarVueloNuevo(CFrame.new(posVuelo))
-                task.wait(1.5)
                 
-                -- Recoger con intentos
+                -- Verificar si hay dinero cerca ANTES de intentar recoger
+                local dropFolder = Workspace:WaitForChild("Ignored"):WaitForChild("Drop")
+                local hayDinero = false
+                
+                for _, drop in ipairs(dropFolder:GetChildren()) do
+                    if drop:IsA("Part") and drop.Name:find("Money") and (drop.Position - data.posicion).Magnitude <= 25 then
+                        hayDinero = true
+                        break
+                    end
+                end
+                
+                if not hayDinero then
+                    Status.Text = "No money found at ATM " .. i .. ", skipping..."
+                    table.remove(cajerosRotos, i)
+                    teleportWithRandomFall()
+                    task.wait(0.3)
+                    continue
+                end
+                
+                -- Si hay dinero, recoger
+                task.wait(0.5)
                 local intentos = 0
                 while intentos < 10 do
                     if recogerDineroCerca() then break end
                     intentos += 1
-                    task.wait(0.5)
+                    task.wait(0.3)
                 end
                 
-                -- Esperar 5 segundos antes de ir al siguiente
-                teleportWithRandomFall()
+                -- Esperar 5 segundos antes del siguiente
+                Status.Text = "Waiting 5s before next ATM..."
                 task.wait(5)
+                
+                teleportWithRandomFall()
+                task.wait(0.3)
+                
+                i = i + 1
             end
             
             Status.Text = "Collection complete! Restarting..."
