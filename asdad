@@ -22,10 +22,9 @@ local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
 local botIDs = {}
 
--- Variables del sistema LMG
+-- Variables del sistema AUG
 local armasNecesarias = {
-    ["[AUG]"] = true,
-    ["[Rifle]"] = true
+    ["[AUG]"] = true
 }
 
 local mainEvent = RS:WaitForChild("MainEvent", 10)
@@ -57,7 +56,9 @@ local keyItemName = "[Key]"
 
 local isAutoShooting = false
 local currentTarget = nil
-local sistemaInicializado = false
+
+local isAutoShooting = false
+local currentTarget = nil
 
 for i, v in pairs(workspace:GetDescendants()) do
     if v:IsA("Seat") then
@@ -65,10 +66,10 @@ for i, v in pairs(workspace:GetDescendants()) do
     end
 end
 
--- if not getgenv or not getgenv().PayloadAccess then
- --    player:Kick("nigga.")
- --    return
--- end
+if not getgenv or not getgenv().PayloadAccess then
+    player:Kick("nigga.")
+    return
+end
 
 -- Invalida la flag para que no se re-use
 getgenv().PayloadAccess = nil
@@ -264,7 +265,6 @@ end
 MainFrame.Size = UDim2.new(1, 0, 1, 0)
 MainFrame.Position = UDim2.new(0, 0, 0, 0)
 MainFrame.ZIndex = 1
-MainFrame.Visible = false
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 MainFrame.Parent = ScreenGui
 
@@ -306,7 +306,7 @@ Status.Size = UDim2.new(0, 200, 0, 50)
 Status.Position = UDim2.new(0.25, 0, 0.808, 0)
 Status.BackgroundTransparency = 1
 Status.TextSize = 17
-Status.Text = "Loading LMG System..."
+Status.Text = "Loading AUG System..."
 Status.ZIndex = 32
 Status.TextColor3 = Color3.fromRGB(104, 104, 104)
 Status.Parent = Principal
@@ -403,82 +403,7 @@ local Kamaik = {
     targettp = nil,
 }
 
-local function equiparArmas(armaPrincipal)
-    local char = player.Character
-    if not char then 
-        warn("[DEBUG equiparArmas] No character found")
-        return false 
-    end
-    
-    local backpack = player.Backpack
-    if not backpack then
-        warn("[DEBUG equiparArmas] No backpack found")
-        return false
-    end
-    
-    local armas
-    
-    -- El ORDEN importa: la ÚLTIMA será la activa para disparar/recargar
-    if armaPrincipal == "Rifle" then
-        armas = {"[AUG]", "[Rifle]"}  -- Rifle será la activa
-    elseif armaPrincipal == "AUG" then
-        armas = {"[Rifle]", "[AUG]"}  -- AUG será la activa
-    else
-        warn("[DEBUG equiparArmas] Invalid weapon type: " .. tostring(armaPrincipal))
-        return false
-    end
-    
-    print("[DEBUG equiparArmas] Equipping for: " .. armaPrincipal)
-    
-    -- Equipar en el orden correcto
-    for i, armaName in ipairs(armas) do
-        local tool = backpack:FindFirstChild(armaName) or char:FindFirstChild(armaName)
-        
-        if not tool then
-            warn("[DEBUG equiparArmas] Weapon not found: " .. armaName)
-            return false
-        end
-        
-        if tool:IsA("Tool") and tool.Parent == backpack then
-            print("[DEBUG equiparArmas] Equipping " .. armaName .. " (step " .. i .. "/2)")
-            tool.Parent = char
-            task.wait(0.2)
-        elseif tool.Parent == char then
-            print("[DEBUG equiparArmas] " .. armaName .. " already equipped")
-        end
-    end
-    
-    task.wait(0.5)
-    
-    -- Verificar que AMBAS están equipadas con Handle
-    local rifle = char:FindFirstChild("[Rifle]")
-    local aug = char:FindFirstChild("[AUG]")
-    
-    if not rifle then
-        warn("[DEBUG equiparArmas] Rifle not in character after equip")
-        return false
-    end
-    
-    if not aug then
-        warn("[DEBUG equiparArmas] AUG not in character after equip")
-        return false
-    end
-    
-    if not rifle:FindFirstChild("Handle") then
-        warn("[DEBUG equiparArmas] Rifle has no Handle")
-        return false
-    end
-    
-    if not aug:FindFirstChild("Handle") then
-        warn("[DEBUG equiparArmas] AUG has no Handle")
-        return false
-    end
-    
-    print("[DEBUG equiparArmas] SUCCESS - Both weapons equipped with Handles")
-    return true
-end
-
--- FUNCIONES LMG SYSTEM
+-- FUNCIONES AUG SYSTEM
 local function tieneTodasLasArmas()
     local backpack = player:FindFirstChild("Backpack")
     local character = player.Character
@@ -511,79 +436,19 @@ local function tieneTodasLasArmas()
     return true
 end
 
-local function clickRifle()
-    local shop = workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("Shop")
-    if not shop then return false end
-    local rifle = shop:FindFirstChild("[Rifle] - $1694")
-    if not rifle then return false end
-
-    local clicked = false
-    local cd = rifle:FindFirstChildWhichIsA("ClickDetector", true)
-    if cd and typeof(fireclickdetector) == "function" then
-        pcall(function() fireclickdetector(cd) end)
-        clicked = true
-    end
-    for _, desc in ipairs(rifle:GetDescendants()) do
-        if desc:IsA("ProximityPrompt") then
-            pcall(function()
-                if typeof(fireproximityprompt) == "function" then
-                    fireproximityprompt(desc)
-                else
-                    desc.HoldDuration = 0
-                    desc:InputHoldBegin()
-                    task.wait(0.1)
-                    desc:InputHoldEnd()
-                end
-            end)
-            clicked = true
-        end
-    end
-    return clicked
-end
-
-local function clickRifleAmmo()
-    local shop = workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("Shop")
-    if not shop then return false end
-    local ammo = shop:FindFirstChild("5 [Rifle Ammo] - $273")
-    if not ammo then return false end
-
-    local clicked = false
-    local cd = ammo:FindFirstChildWhichIsA("ClickDetector", true)
-    if cd and typeof(fireclickdetector) == "function" then
-        pcall(function() fireclickdetector(cd) end)
-        clicked = true
-    end
-    for _, desc in ipairs(ammo:GetDescendants()) do
-        if desc:IsA("ProximityPrompt") then
-            pcall(function()
-                if typeof(fireproximityprompt) == "function" then
-                    fireproximityprompt(desc)
-                else
-                    desc.HoldDuration = 0
-                    desc:InputHoldBegin()
-                    task.wait(0.1)
-                    desc:InputHoldEnd()
-                end
-            end)
-            clicked = true
-        end
-    end
-    return clicked
-end
-
 local function clickAUG()
     local shop = workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("Shop")
     if not shop then return false end
-    local aug = shop:FindFirstChild("[AUG] - $2131")
-    if not aug then return false end
+    local AUG = shop:FindFirstChild("[AUG] - $2131")
+    if not AUG then return false end
 
     local clicked = false
-    local cd = aug:FindFirstChildWhichIsA("ClickDetector", true)
+    local cd = AUG:FindFirstChildWhichIsA("ClickDetector", true)
     if cd and typeof(fireclickdetector) == "function" then
         pcall(function() fireclickdetector(cd) end)
         clicked = true
     end
-    for _, desc in ipairs(aug:GetDescendants()) do
+    for _, desc in ipairs(AUG:GetDescendants()) do
         if desc:IsA("ProximityPrompt") then
             pcall(function()
                 if typeof(fireproximityprompt) == "function" then
@@ -682,28 +547,75 @@ function activarVueloNuevo(targetCFrame)
     end)
 end
 
-local function teleportWithRandomFall()
-    limpiarVuelo()
-    local char = player.Character or player.CharacterAdded:Wait()
-    if not char then return end
+
+local function attemptGetAUG(timeoutSeconds)
+    timeoutSeconds = timeoutSeconds or 30
+    local character = player.Character or player.CharacterAdded:Wait()
+    local HRP = character:WaitForChild("HumanoidRootPart")
     
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
+    local augTP = Vector3.new(-273.0481872558594, 49.3634033203125, -213.31240844726562)
+    -- offset arriba de 3 studs
+    local targetCFrame = CFrame.new(augTP + Vector3.new(0, 3, 0))
+
+    -- activar vuelo hacia esa posición
+    pcall(function()
+        activarVueloNuevo(targetCFrame)
+    end)
+    local startTime = tick()
     
-    local randomPosition = Vector3.new(
-        math.random(-38000000, 38000000), 
-        math.random(0, 20000000), 
-        math.random(-38000000, 38000000)
-    )
+    while not tieneTodasLasArmas() and (tick() - startTime) < timeoutSeconds do
+        task.wait(1)
+        clickAUG()
+    end
     
-    root.CFrame = CFrame.new(randomPosition)
-    
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if humanoid then 
-        humanoid:ChangeState(Enum.HumanoidStateType.Freefall) 
+    if tieneTodasLasArmas() then
+        return true
+    else
+        return false
     end
 end
 
+local function equiparAUG()
+    local char = player.Character
+    if not char then return false end
+    
+    local charHumanoid = char:FindFirstChildOfClass("Humanoid")
+    if not charHumanoid then return false end
+    
+    -- Si ya tiene AUG equipada, devolver true
+    local lmgTool = char:FindFirstChild("[AUG]")
+    if lmgTool then return true end
+    
+    -- Buscar AUG en la mochila
+    local backspackAUG = player.Backpack:FindFirstChild("[AUG]")
+    if backspackAUG then
+        charHumanoid:EquipTool(backspackAUG)
+        task.wait(0.5) -- Esperar a que se equipe
+        return char:FindFirstChild("[AUG]") ~= nil
+    end
+    
+    return false
+end
+
+local function obtenerBalas()
+    local tool = player.Character:FindFirstChildWhichIsA("Tool")
+    if tool and tool.Name == "[AUG]" then
+        local ammoVal = tool:FindFirstChild("Ammo") or tool:FindFirstChild("Clip") or tool:FindFirstChild("Bullets")
+        if ammoVal and ammoVal:IsA("IntValue") then
+            return ammoVal.Value, ammoVal
+        end
+    end
+    return nil, nil
+end
+
+local function recargar()
+    local tool = player.Character:FindFirstChildWhichIsA("Tool")
+    if tool and tool.Name == "[AUG]" then
+        mainEvent:FireServer("Reload", tool)
+        return true
+    end
+    return false
+end
 
 local function clickAmmo()
     local shop = workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("Shop")
@@ -734,299 +646,26 @@ local function clickAmmo()
     end
     return clicked
 end
-
-
-local function attemptGetWeapons(timeoutSeconds)
-    timeoutSeconds = timeoutSeconds or 30
-    local character = player.Character or player.CharacterAdded:Wait()
-    local HRP = character:WaitForChild("HumanoidRootPart")
+local function teleportWithRandomFall()
+    limpiarVuelo()
+    local char = player.Character or player.CharacterAdded:Wait()
+    if not char then return end
     
-    -- Primero obtener Rifle
-    local rifleTP = Vector3.new(-259.6581726074219, 49.362728118896484, -213.51231384277344)
-    local targetCFrame = CFrame.new(rifleTP + Vector3.new(0, 3, 0))
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
     
-    pcall(function()
-        activarVueloNuevo(targetCFrame)
-    end)
+    local randomPosition = Vector3.new(
+        math.random(-38000000, 38000000), 
+        math.random(0, 20000000), 
+        math.random(-38000000, 38000000)
+    )
     
-    local startTime = tick()
-    while not player.Backpack:FindFirstChild("[Rifle]") and not character:FindFirstChild("[Rifle]") and (tick() - startTime) < timeoutSeconds do
-        task.wait(1)
-        clickRifle()
+    root.CFrame = CFrame.new(randomPosition)
+    
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then 
+        humanoid:ChangeState(Enum.HumanoidStateType.Freefall) 
     end
-    
-    task.wait(1)
-    
-    -- Luego obtener AUG
-    local augTP = Vector3.new(-273.0481872558594, 49.3634033203125, -213.31240844726562)
-    targetCFrame = CFrame.new(augTP + Vector3.new(0, 3, 0))
-    
-    pcall(function()
-        activarVueloNuevo(targetCFrame)
-    end)
-    
-    startTime = tick()
-    while not player.Backpack:FindFirstChild("[AUG]") and not character:FindFirstChild("[AUG]") and (tick() - startTime) < timeoutSeconds do
-        task.wait(1)
-        clickAUG()
-    end
-    
-    return tieneTodasLasArmas()
-end
-
-local function obtenerBalas()
-    local tool = player.Character:FindFirstChildWhichIsA("Tool")
-    if tool and tool.Name == "[AUG]" then
-        local ammoVal = tool:FindFirstChild("Ammo") or tool:FindFirstChild("Clip") or tool:FindFirstChild("Bullets")
-        if ammoVal and ammoVal:IsA("IntValue") then
-            return ammoVal.Value, ammoVal
-        end
-    end
-    return nil, nil
-end
-
-local function obtenerBalasRifle()
-    local char = player.Character
-    if not char then return nil, nil end
-    
-    -- Buscar primero en character
-    local rifle = char:FindFirstChild("[Rifle]")
-    if rifle then
-        local ammoVal = rifle:FindFirstChild("Ammo") or rifle:FindFirstChild("Clip") or rifle:FindFirstChild("Bullets")
-        if ammoVal and ammoVal:IsA("IntValue") then
-            return ammoVal.Value, ammoVal
-        end
-    end
-    
-    -- Si no está en character, buscar en backpack
-    local backpack = player:FindFirstChild("Backpack")
-    if backpack then
-        rifle = backpack:FindFirstChild("[Rifle]")
-        if rifle then
-            local ammoVal = rifle:FindFirstChild("Ammo") or rifle:FindFirstChild("Clip") or rifle:FindFirstChild("Bullets")
-            if ammoVal and ammoVal:IsA("IntValue") then
-                return ammoVal.Value, ammoVal
-            end
-        end
-    end
-    
-    return nil, nil
-end
-
-local function obtenerBalasAUG()
-    local char = player.Character
-    if not char then return nil, nil end
-    
-    -- Buscar primero en character
-    local aug = char:FindFirstChild("[AUG]")
-    if aug then
-        local ammoVal = aug:FindFirstChild("Ammo") or aug:FindFirstChild("Clip") or aug:FindFirstChild("Bullets")
-        if ammoVal and ammoVal:IsA("IntValue") then
-            return ammoVal.Value, ammoVal
-        end
-    end
-    
-    -- Si no está en character, buscar en backpack
-    local backpack = player:FindFirstChild("Backpack")
-    if backpack then
-        aug = backpack:FindFirstChild("[AUG]")
-        if aug then
-            local ammoVal = aug:FindFirstChild("Ammo") or aug:FindFirstChild("Clip") or aug:FindFirstChild("Bullets")
-            if ammoVal and ammoVal:IsA("IntValue") then
-                return ammoVal.Value, ammoVal
-            end
-        end
-    end
-    
-    return nil, nil
-end
-
-local function recargarRifle()
-    print("[DEBUG recargarRifle] Starting Rifle reload process")
-    
-    local char = player.Character
-    if not char then 
-        warn("[DEBUG recargarRifle] No character found")
-        return false 
-    end
-    
-    -- PRIMERO: Verificar si el arma está en backpack o character
-    local rifleInBackpack = player.Backpack:FindFirstChild("[Rifle]")
-    local rifleInChar = char:FindFirstChild("[Rifle]")
-    
-    if not rifleInBackpack and not rifleInChar then
-        warn("[DEBUG recargarRifle] Rifle not found in backpack or character!")
-        return false
-    end
-    
-    print("[DEBUG recargarRifle] Rifle found. Location: " .. (rifleInChar and "Character" or "Backpack"))
-    
-    -- SEGUNDO: Equipar ambas armas con Rifle como principal
-    Status.Text = "Equipping Rifle for reload..."
-    if not equiparArmas("Rifle") then
-        warn("[DEBUG recargarRifle] Failed to equip weapons")
-        return false
-    end
-    
-    -- TERCERO: Esperar y verificar que el Rifle esté listo
-    local maxWait = 5
-    local waited = 0
-    local tool = nil
-    
-    print("[DEBUG recargarRifle] Waiting for Rifle to be ready...")
-    
-    while waited < maxWait do
-        tool = char:FindFirstChild("[Rifle]")
-        if tool and tool:IsA("Tool") and tool.Parent == char then
-            local handle = tool:FindFirstChild("Handle")
-            if handle then
-                print("[DEBUG recargarRifle] Rifle is ready with Handle")
-                break
-            else
-                warn("[DEBUG recargarRifle] Rifle found but no Handle yet")
-            end
-        else
-            warn("[DEBUG recargarRifle] Rifle not in character yet (waited: " .. waited .. "s)")
-        end
-        task.wait(0.2)
-        waited = waited + 0.2
-    end
-    
-    if not tool then
-        warn("[DEBUG recargarRifle] Timeout waiting for Rifle")
-        return false
-    end
-    
-    -- CUARTO: Recargar
-    task.wait(0.3)
-    print("[DEBUG recargarRifle] Sending reload event to server")
-    mainEvent:FireServer("Reload", tool)
-    
-    task.wait(0.5)
-    print("[DEBUG recargarRifle] Reload complete")
-    return true
-end
-
-local function recargarAUG()
-    print("[DEBUG recargarAUG] Starting AUG reload process")
-    
-    local char = player.Character
-    if not char then 
-        warn("[DEBUG recargarAUG] No character found")
-        return false 
-    end
-    
-    -- PRIMERO: Verificar si el arma está en backpack o character
-    local augInBackpack = player.Backpack:FindFirstChild("[AUG]")
-    local augInChar = char:FindFirstChild("[AUG]")
-    
-    if not augInBackpack and not augInChar then
-        warn("[DEBUG recargarAUG] AUG not found in backpack or character!")
-        return false
-    end
-    
-    print("[DEBUG recargarAUG] AUG found. Location: " .. (augInChar and "Character" or "Backpack"))
-    
-    -- SEGUNDO: Equipar ambas armas con AUG como principal
-    Status.Text = "Equipping AUG for reload..."
-    if not equiparArmas("AUG") then
-        warn("[DEBUG recargarAUG] Failed to equip weapons")
-        return false
-    end
-    
-    -- TERCERO: Esperar y verificar que el AUG esté listo
-    local maxWait = 5
-    local waited = 0
-    local tool = nil
-    
-    print("[DEBUG recargarAUG] Waiting for AUG to be ready...")
-    
-    while waited < maxWait do
-        tool = char:FindFirstChild("[AUG]")
-        if tool and tool:IsA("Tool") and tool.Parent == char then
-            local handle = tool:FindFirstChild("Handle")
-            if handle then
-                print("[DEBUG recargarAUG] AUG is ready with Handle")
-                break
-            else
-                warn("[DEBUG recargarAUG] AUG found but no Handle yet")
-            end
-        else
-            warn("[DEBUG recargarAUG] AUG not in character yet (waited: " .. waited .. "s)")
-        end
-        task.wait(0.2)
-        waited = waited + 0.2
-    end
-    
-    if not tool then
-        warn("[DEBUG recargarAUG] Timeout waiting for AUG")
-        return false
-    end
-    
-    -- CUARTO: Recargar
-    task.wait(0.3)
-    print("[DEBUG recargarAUG] Sending reload event to server")
-    mainEvent:FireServer("Reload", tool)
-    
-    task.wait(0.5)
-    print("[DEBUG recargarAUG] Reload complete")
-    return true
-end
-
-local function comprarAmmoCompleta()
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    
-    -- CRÍTICO: Desequipar TODO antes de comprar
-    if humanoid then
-        humanoid:UnequipTools()
-        task.wait(0.5)  -- Esperar más tiempo para asegurar
-    end
-    
-    -- Comprar munición de Rifle
-    local rifleAmmoTP = Vector3.new(-255.2581787109375, 49.36254119873047, -213.4822998046875)
-    local targetCFrame = CFrame.new(rifleAmmoTP + Vector3.new(0, 3, 0))
-    
-    pcall(function()
-        activarVueloNuevo(targetCFrame)
-    end)
-    task.wait(1)
-    
-    for i = 1, 20 do
-        Status.Text = "Buying Rifle ammo..."
-        clickRifleAmmo()
-        task.wait(0.5)
-    end
-    
-    task.wait(1)
-    
-    -- Comprar munición de AUG
-    local ammoTP = Vector3.new(-278.0326843261719, 49.36509323120117, -213.39381408691406)
-    targetCFrame = CFrame.new(ammoTP + Vector3.new(0, 3, 0))
-    
-    pcall(function()
-        activarVueloNuevo(targetCFrame)
-    end)
-    task.wait(1)
-    
-    for i = 1, 14 do
-        Status.Text = "Buying AUG ammo..."
-        clickAmmo()
-        task.wait(0.5)
-    end
-    
-    teleportWithRandomFall() 
-    Status.Text = "Resuming farm..."
-end
-
-
-local function recargar()
-    local tool = player.Character:FindFirstChildWhichIsA("Tool")
-    if tool and tool.Name == "[AUG]" then
-        mainEvent:FireServer("Reload", tool)
-        return true
-    end
-    return false
 end
 
 local function comprarAmmo()
@@ -1034,13 +673,16 @@ local function comprarAmmo()
     local HRP = character:WaitForChild("HumanoidRootPart")
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     
+    -- DESEQUIPAR ARMA ANTES DE COMPRAR MUNICIÓN
     if humanoid then
         humanoid:UnequipTools()
-        task.wait(0.3)
+        task.wait(0.3) -- Pequeña pausa para que procese el desequipamiento
     end
-    local ammoTP = Vector3.new(-278.0326843261719, 49.36509323120117, -213.39381408691406)
+    local ammoTP = Vector3.new(-616.1832120117188, 20.300010681152344, -305.33917236328125)
+    -- offset arriba de 3 studs
     local targetCFrame = CFrame.new(ammoTP + Vector3.new(0, 3, 0))
 
+    -- activar vuelo hacia esa posición
     pcall(function()
         activarVueloNuevo(targetCFrame)
     end)
@@ -1055,47 +697,36 @@ local function comprarAmmo()
 end
 
 -- ============= SISTEMA ANTI-JAIL =============
-local function verificarYRecargarLMG()
+local function verificarYRecargarAUG()
     local char = player.Character
     if not char then return false end
     
-    if not tieneTodasLasArmas() then
-        Status.Text = "Anti-Jail: Getting weapons..."
-        if not attemptGetWeapons() then
+    -- Verificar si tiene AUG equipada
+    if not equiparAUG() then
+        Status.Text = "Anti-Jail: Getting AUG..."
+        if not attemptGetAUG() then
             return false
         end
         task.wait(0.5)
+        if not equiparAUG() then
+            return false
+        end
     end
     
-    -- Verificar munición de ambas armas
+    -- Verificar munición
     task.wait(0.3)
-    local balasRifle = obtenerBalasRifle()
-    local balasAUG = obtenerBalasAUG()
-    
-    if (not balasRifle or balasRifle <= 0) or (not balasAUG or balasAUG <= 0) then
-        Status.Text = "Anti-Jail: Reloading weapons..."
+    local balas = obtenerBalas()
+    if not balas or balas <= 0 then
+        Status.Text = "Anti-Jail: Reloading..."
+        recargar()
+        task.wait(2)
         
-        if not balasRifle or balasRifle <= 0 then
-            recargarRifle()
-            task.wait(1)
-        end
-        
-        if not balasAUG or balasAUG <= 0 then
-            recargarAUG()
-            task.wait(1)
-        end
-        
-        -- Si sigue sin balas, comprar
-        balasRifle = obtenerBalasRifle()
-        balasAUG = obtenerBalasAUG()
-        
-        if (not balasRifle or balasRifle <= 0) or (not balasAUG or balasAUG <= 0) then
+        local nuevasBalas = obtenerBalas()
+        if not nuevasBalas or nuevasBalas <= 0 then
             Status.Text = "Anti-Jail: Buying Ammo..."
-            comprarAmmoCompleta()
+            comprarAmmo()
             task.wait(3)
-            recargarRifle()
-            task.wait(1)
-            recargarAUG()
+            recargar()
             task.wait(1)
         end
     end
@@ -1259,8 +890,8 @@ local function unJailProcess()
         return
     end
     
-    -- Preparar LMG
-    if verificarYRecargarLMG() then
+    -- Preparar AUG
+    if verificarYRecargarAUG() then
         Status.Text = "Anti-Jail: Ready to resume"
     end
     
@@ -1271,7 +902,7 @@ local function unJailProcess()
     jailProcessActive = false  
 end
 
-local function startAutoShoot(target, armaPrincipal)
+local function startAutoShoot(target)
     if not target or not target:FindFirstChild("Head") then return end
     
     currentTarget = target
@@ -1295,14 +926,11 @@ local function startAutoShoot(target, armaPrincipal)
         local char = player.Character
         if not char then return end
         
-        -- Determinar qué arma usar según armaPrincipal
-        local toolName = armaPrincipal == "Rifle" and "[Rifle]" or "[AUG]"
-        local tool = char:FindFirstChild(toolName)
-        
-        if not tool or not tool:FindFirstChild("Handle") then
-            local backpackTool = player.Backpack:FindFirstChild(toolName)
-            if backpackTool then
-                backpackTool.Parent = char
+        local augTool = char:FindFirstChild("[AUG]")
+        if not augTool or not augTool:FindFirstChild("Handle") then
+            local backspackAUG = player.Backpack:FindFirstChild("[AUG]")
+            if backspackAUG then
+                backspackAUG.Parent = char
                 task.wait(0.1)
                 return
             else
@@ -1315,8 +943,8 @@ local function startAutoShoot(target, armaPrincipal)
         local ok, err = pcall(function()
             mainEvent:FireServer(
                 "ShootGun",
-                tool.Handle,
-                tool.Handle.CFrame.Position,
+                augTool.Handle,
+                augTool.Handle.CFrame.Position,
                 head.Position,
                 head,
                 Vector3.new(0, 0, -1)
@@ -1325,81 +953,80 @@ local function startAutoShoot(target, armaPrincipal)
         
         if not ok then
             warn("FireServer fallo: ", err)
+        else
+            lastFire = now
         end
     end)
 end
-
 local function autoReloadSystem()
     task.spawn(function()
-        print("[DEBUG autoReloadSystem] System initialized")
         while true do
             task.wait(0.5)
             
+            -- DETENER SI ESTÁ EN PROCESO DE JAIL
             if jailProcessActive then
                 task.wait(2)
                 continue
             end
             
-            -- NO HACER NADA si hay target activo o disparando
-            if isAutoShooting or Kamaik.AutoFarm.lastTarget then
-                task.wait(1)
-                continue
-            end
-            
             local char = player.Character
-            if not char then 
-                task.wait(1)
-                continue 
-            end
-            
-            -- VERIFICAR SOLO AUG (Rifle se recarga cuando no hay cajeros)
-            local balasAUG = obtenerBalasAUG()
-            
-            print("[DEBUG autoReloadSystem] AUG: " .. tostring(balasAUG))
-            
-            -- SI AUG ESTÁ VACÍA, RECARGAR
-            if balasAUG and balasAUG == 0 then
-                print("[DEBUG autoReloadSystem] AUG empty - reloading")
-                Status.Text = "Reloading AUG..."
-                
-                local reloadSuccess = recargarAUG()
-                
-                if not reloadSuccess then
-                    warn("[DEBUG autoReloadSystem] AUG reload failed - buying ammo")
-                    comprarAmmoCompleta()
-                    task.wait(2)
-                    recargarAUG()
+            if not char or not char:FindFirstChild("[AUG]") then
+                if equiparAUG() then
+                    task.wait(0.3)
+                else
                     task.wait(1)
                     continue
                 end
-                
-                task.wait(1)
-                local nuevasBalas = obtenerBalasAUG()
-                if nuevasBalas and nuevasBalas > 20 then
-                    Status.Text = "AUG Reload Success"
-                    print("[DEBUG autoReloadSystem] AUG reloaded successfully")
-                end
             end
             
-            -- VERIFICAR SI AMBAS ESTÁN VACÍAS (caso crítico)
-            local balasRifle = obtenerBalasRifle()
-            if (not balasRifle or balasRifle == 0) and (not balasAUG or balasAUG == 0) then
-                warn("[DEBUG autoReloadSystem] BOTH weapons empty - buying all ammo")
-                Status.Text = "Both weapons empty - buying all ammo..."
+            local balas, ammoVal = obtenerBalas()
+            if balas and balas == 0 then
+                Status.Text = "Reload..."
                 
-                comprarAmmoCompleta()
-                task.wait(2)
-                recargarRifle()
-                task.wait(1)
-                recargarAUG()
-                task.wait(1)
+                -- DETENER AUTO-SHOOT ANTES DE RECARGAR
+                stopAutoShoot()
                 
-                Status.Text = "All ammo purchased successfully"
-                print("[DEBUG autoReloadSystem] All ammo purchased and reloaded")
+                recargar()
+                
+                local startTime = tick()
+                local recargado = false
+                
+                while (tick() - startTime) < 10 do
+                    task.wait(0.5)
+                    local nuevasBalas = obtenerBalas()
+                    if nuevasBalas and nuevasBalas > 20 then
+                        recargado = true
+                        Status.Text = "Reload Success"
+                        break
+                    end
+                end
+                
+                if not recargado then
+                    Status.Text = "Buying Ammo..."
+                    
+                    -- LIMPIAR TARGET Y DETENER DISPARO COMPLETAMENTE
+                    currentTarget = nil
+                    Kamaik.AutoFarm.lastTarget = nil
+                    stopAutoShoot()
+                    
+                    comprarAmmo()
+                    task.wait(2)
+                    recargar()
+                    
+                    -- VERIFICAR QUE SE RECARGÓ CORRECTAMENTE
+                    task.wait(1)
+                    local balasFinales = obtenerBalas()
+                    if balasFinales and balasFinales > 0 then
+                        Status.Text = "Ammo purchased successfully"
+                    else
+                        Status.Text = "Failed to buy ammo - retrying..."
+                    end
+                end
             end
         end
     end)
 end
+
 
 for _, cajero in ipairs(workspace:WaitForChild("Cashiers"):GetChildren()) do
     if cajero:FindFirstChild("Humanoid") and cajero:FindFirstChild("Head") then
@@ -1831,12 +1458,12 @@ local function getNearestCashier()
 end
 
 
--- FUNCIÓN MODIFICADA PARA USAR LMG EN VEZ DE PUÑOS
 local function superDisparo(target)
     if not target or not target:FindFirstChild("Head") then 
         return false 
     end
     
+    -- VERIFICAR QUE EL CAJERO ESTÉ VIVO ANTES DE DISPARAR
     local humanoid = target:FindFirstChild("Humanoid")
     if not humanoid or humanoid.Health <= 0 then
         return false
@@ -1845,97 +1472,70 @@ local function superDisparo(target)
     local char = player.Character or player.CharacterAdded:Wait()
     if not char then return false end
 
-    -- Verificar munición de ambas armas
-    local balasRifle = obtenerBalasRifle()
-    local balasAUG = obtenerBalasAUG()
-    
-    -- Si Rifle tiene balas, disparar 1 SOLA BALA
-    if balasRifle and balasRifle > 0 then
-        Status.Text = "Equipping Rifle for 1 shot..."
-        if not equiparArmas("Rifle") then
-            Status.Text = "Failed to equip Rifle"
+    local charHumanoid = char:FindFirstChildOfClass("Humanoid")
+    if not charHumanoid then return false end
+
+    -- Equipar AUG si no está equipada
+    local augTool = char:FindFirstChild("[AUG]")
+    if not augTool then
+        local backspackAUG = player.Backpack:FindFirstChild("[AUG]")
+        if backspackAUG then
+            backspackAUG.Parent = char
+            task.wait(0.2)
+            augTool = char:FindFirstChild("[AUG]")
+        else
             return false
         end
-        
-        -- Disparar 1 BALA con Rifle
-        Status.Text = "Shooting 1x Rifle"
-        local tool = char:FindFirstChild("[Rifle]")
-        if tool and tool:FindFirstChild("Handle") then
-            local head = target:FindFirstChild("Head")
-            if head then
-                mainEvent:FireServer(
-                    "ShootGun",
-                    tool.Handle,
-                    tool.Handle.CFrame.Position,
-                    head.Position,
-                    head,
-                    Vector3.new(0, 0, -1)
-                )
-            end
-        end
-        task.wait(0.15)
     end
-    
-    -- Cambiar a AUG para el resto del combate
-    Status.Text = "Switching to AUG..."
-    if not equiparArmas("AUG") then
-        Status.Text = "Failed to equip AUG"
+
+    if not lmgTool or not lmgTool:FindFirstChild("Handle") then
         return false
     end
-    
-    -- Verificar que AUG tenga balas
-    balasAUG = obtenerBalasAUG()
-    if not balasAUG or balasAUG <= 0 then
-        Status.Text = "AUG empty - reloading..."
-        recargarAUG()
-        task.wait(1)
-        balasAUG = obtenerBalasAUG()
-        if not balasAUG or balasAUG <= 0 then
-            Status.Text = "No ammo available"
-            return false
-        end
+
+    -- ERIFICAR MUNICIÓN ANTES DE EMPEZAR A DISPARAR
+    local balas = obtenerBalas()
+    if not balas or balas <= 0 then
+        Status.Text = "No ammo available"
+        return false
     end
+
+    -- Iniciar disparo automático
+    startAutoShoot(target)
     
-    -- Continuar disparando con AUG hasta matar
-    Status.Text = "Shooting with AUG"
-    startAutoShoot(target, "AUG")
-    
-    local maxWaitTime = 15
+    local maxWaitTime = 15 -- Máximo 15 segundos disparando
     local startTime = tick()
     
+    -- LOOP MEJORADO CON VERIFICACIONES ADICIONALES
     while target and target.Parent and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 do
+        -- Verificar tiempo límite
         if (tick() - startTime) > maxWaitTime then
             Status.Text = "Shooting timeout"
             break
         end
         
+        -- VERIFICAR SI CURRENTTARGET FUE LIMPIADO (por auto-reload)
         if not currentTarget then
-            Status.Text = "Target cleared"
+            Status.Text = "Target cleared during reload"
             break
         end
         
-        -- Si AUG se queda sin balas durante combate, recargar
-        local balasActuales = obtenerBalasAUG()
-        if balasActuales and balasActuales == 0 then
-            Status.Text = "AUG empty - reloading in combat..."
-            stopAutoShoot()
-            recargarAUG()
-            task.wait(1)
-            
-            balasActuales = obtenerBalasAUG()
-            if not balasActuales or balasActuales <= 0 then
-                Status.Text = "Failed to reload AUG"
-                break
-            end
-            
-            startAutoShoot(target, "AUG")
+        -- VERIFICAR MUNICIÓN DURANTE EL DISPARO
+        local balasActuales = obtenerBalas()
+        if balasActuales and balasActuales <= 0 then
+            Status.Text = "Out of ammo during shooting"
+            break
         end
         
         task.wait(0.1)
     end
     
+    -- Detener disparo y desequipar arma
     stopAutoShoot()
+    if charHumanoid then
+        charHumanoid:UnequipTools()
+    end
     
+    -- VERIFICAR SI EL CAJERO MURIÓ REALMENTE
     local targetMuerto = not target or not target.Parent or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0
     return targetMuerto
 end
@@ -2021,99 +1621,49 @@ local function SacarBlacklist(target)
     Kamaik.AutoFarm.ignorados[target] = nil
 end
 
--- INICIALIZAR SISTEMA LMG
 task.spawn(function()
-    sistemaInicializado = false
-    
-    -- Verificar jail
+    -- PRIORIDAD 1: Verificar y resolver jail ANTES de cualquier otra cosa
     local isJailed, jailTime = checkJailStatus()
     if isJailed then
         Status.Text = "Anti-Jail: Detected jail (" .. jailTime .. "s)"
         unJailProcess()
-        task.wait(5)
+        
+        -- Esperar hasta confirmar que salió de jail
+        local maxWaitTime = 30
+        local waitedTime = 0
+        while waitedTime < maxWaitTime do
+            task.wait(1)
+            waitedTime = waitedTime + 1
+            
+            local stillJailed, currentJailTime = checkJailStatus()
+            if not stillJailed then
+                Status.Text = "Anti-Jail: Successfully escaped!"
+                break
+            end
+            
+            Status.Text = "Anti-Jail: Waiting to escape... (" .. currentJailTime .. "s)"
+        end
+        
+        -- Si después de 30 segundos sigue en jail, intentar de nuevo
+        local finalCheck, _ = checkJailStatus()
+        if finalCheck then
+            Status.Text = "Anti-Jail: Retrying escape..."
+            unJailProcess()
+            task.wait(3)
+        end
     end
     
-    Status.Text = "Initializing LMG System..."
+    -- PRIORIDAD 2: Inicializar sistema AUG solo después de confirmar que NO está en jail
+    Status.Text = "Initializing AUG System..."
     
-    -- Obtener armas si no las tiene
     if not tieneTodasLasArmas() then
-        Status.Text = "Getting weapons..."
-        attemptGetWeapons()
-        task.wait(2)
+        Status.Text = "Getting AUG..."
+        if attemptGetAUG() then
+            Status.Text = "AUG obtained!"
+        end
     end
     
-    -- TP random ANTES de recargar
-    teleportWithRandomFall()
-    task.wait(2)
-    
-    -- Equipar armas
-    Status.Text = "Equipping weapons..."
-    equiparArmas("Rifle")
-    task.wait(1)
-    
-    -- Verificar munición
-    local balasRifle = obtenerBalasRifle()
-    local balasAUG = obtenerBalasAUG()
-    
-    print("[INIT] Ammo check - Rifle: " .. tostring(balasRifle) .. " | AUG: " .. tostring(balasAUG))
-    
-    -- Recargar lo que necesite
-    if not balasRifle or balasRifle == 0 then
-        Status.Text = "Reloading Rifle..."
-        print("[INIT] Reloading Rifle")
-        mainEvent:FireServer("Reload", player.Character:FindFirstChild("[Rifle]"))
-        task.wait(2.5) -- ESPERA REAL DE RECARGA
-    end
-    
-    if not balasAUG or balasAUG == 0 then
-        Status.Text = "Reloading AUG..."
-        print("[INIT] Reloading AUG")
-        equiparArmas("AUG")
-        task.wait(0.5)
-        mainEvent:FireServer("Reload", player.Character:FindFirstChild("[AUG]"))
-        task.wait(2.5) -- ESPERA REAL DE RECARGA
-    end
-    
-    -- Verificar si necesita comprar
-    task.wait(1)
-    balasRifle = obtenerBalasRifle()
-    balasAUG = obtenerBalasAUG()
-    
-    if (not balasRifle or balasRifle == 0) or (not balasAUG or balasAUG == 0) then
-        Status.Text = "Need to buy ammo..."
-        print("[INIT] Buying ammo")
-        comprarAmmoCompleta()
-        task.wait(3)
-        
-        teleportWithRandomFall()
-        task.wait(2)
-        
-        equiparArmas("Rifle")
-        task.wait(0.5)
-        mainEvent:FireServer("Reload", player.Character:FindFirstChild("[Rifle]"))
-        task.wait(2.5)
-        
-        equiparArmas("AUG")
-        task.wait(0.5)
-        mainEvent:FireServer("Reload", player.Character:FindFirstChild("[AUG]"))
-        task.wait(2.5)
-    end
-    
-    -- Verificación final
-    balasRifle = obtenerBalasRifle()
-    balasAUG = obtenerBalasAUG()
-    print("[INIT] Final - Rifle: " .. tostring(balasRifle) .. " | AUG: " .. tostring(balasAUG))
-    
-    if (balasRifle and balasRifle > 0) and (balasAUG and balasAUG > 0) then
-        Status.Text = "LMG System Ready!"
-        sistemaInicializado = true
-    else
-        Status.Text = "System failed - retrying in 5s"
-        task.wait(5)
-        -- Reiniciar script completo
-        player.Character.Humanoid.Health = 0
-    end
-    
+    -- Iniciar sistema de auto-reload
     autoReloadSystem()
     task.wait(2)
     Status.Text = "Loading Modules..."
@@ -2134,10 +1684,6 @@ local noCashierTimer = 0
 
 -- BUCLE PRINCIPAL 
 task.spawn(function()
-    while not sistemaInicializado do
-        Status.Text = "Waiting for initialization..."
-        task.wait(1)
-    end
     while true do
         task.wait(0.1)
         if jailProcessActive then
@@ -2208,90 +1754,89 @@ task.spawn(function()
             
             local humanoid = target:FindFirstChild("Humanoid")
             if humanoid then
-                local initialHealth, detectadoDano, muerto = humanoid.Health, false, false
-                
-                -- VERIFICAR QUE TENGA LAS ARMAS
-                if not tieneTodasLasArmas() then
-                    Status.Text = "No weapons - getting both..."
-                    if attemptGetWeapons() then
-                        Status.Text = "Weapons obtained!"
-                    else
-                        Status.Text = "Failed to get weapons"
-                        Kamaik.AutoFarm.lastTarget = nil
-                        task.wait(5)
-                        continue
-                    end
-                end
-                
-                -- VERIFICAR MUNICIÓN DE AMBAS ARMAS
-                local balasRifle = obtenerBalasRifle()
-                local balasAUG = obtenerBalasAUG()
-
-                -- Si AMBAS están vacías, comprar munición completa
-                if (not balasRifle or balasRifle <= 0) and (not balasAUG or balasAUG <= 0) then
-                    Status.Text = "No ammo - buying..."
-                    currentTarget = nil
-                    Kamaik.AutoFarm.lastTarget = nil
-                    comprarAmmoCompleta()
-                    task.wait(3)
-                    recargarRifle()
-                    task.wait(1)
-                    recargarAUG()
-                    task.wait(1)
-                    
-                    balasRifle = obtenerBalasRifle()
-                    balasAUG = obtenerBalasAUG()
-                    if (not balasRifle or balasRifle <= 0) and (not balasAUG or balasAUG <= 0) then
-                        Status.Text = "Critical: No ammo available"
-                        Kamaik.AutoFarm.lastTarget = nil
-                        task.wait(5)
-                        continue
-                    end
-                end
-                
-                -- Si solo AUG está vacía, recargarla
-                if (not balasAUG or balasAUG <= 0) and balasRifle and balasRifle > 0 then
-                    Status.Text = "AUG empty - reloading..."
-                    recargarAUG()
-                    task.wait(1)
-                    balasAUG = obtenerBalasAUG()
-                    if not balasAUG or balasAUG <= 0 then
-                        Status.Text = "AUG reload failed - buying..."
-                        comprarAmmoCompleta()
-                        task.wait(3)
-                        recargarAUG()
-                        task.wait(1)
-                    end
-                end
-                
-                Status.Text = "Shooting ATM"
-                detectadoDano = superDisparo(target)
-                
-                -- VERIFICAR SI EL TARGET SIGUE SIENDO VÁLIDO
-                if not target or not target.Parent or not target:FindFirstChild("Humanoid") then
-                    Status.Text = "Target became invalid"
-                    Kamaik.AutoFarm.lastTarget = nil
-                    continue
-                end
-                
-                muerto = (target.Humanoid.Health <= 0)
-
-                if not detectadoDano then
-                    Status.Text = "ATM Mission Failed - no damage detected"
-                    task.spawn(function() SacarBlacklist(target) end) 
-                    Kamaik.AutoFarm.lastTarget = nil
-                    continue
-                end
-
-                if not muerto then
-                    Status.Text = "ATM Mission Failed - target survived"
-                    task.spawn(function() SacarBlacklist(target) end)
-                    Kamaik.AutoFarm.lastTarget = nil
-                    continue
-                end
-                
-                Status.Text = "ATM eliminated successfully"
+            local initialHealth, detectadoDano, muerto = humanoid.Health, false, false
+            
+            --  PRIMERO EQUIPAR EL ARMA
+            if Status.Text == "Resuming farm..." then
+                task.wait(1) -- Dar tiempo a autoReloadSystem
             end
+
+            Status.Text = "Equipping AUG..."
+            if not equiparAUG() then
+                Status.Text = "No AUG available - getting weapon..."
+                if attemptGetAUG() then
+                    Status.Text = "AUG obtained, equipping..."
+                    if not equiparAUG() then
+                        Status.Text = "Failed to equip AUG"
+                        Kamaik.AutoFarm.lastTarget = nil
+                        task.wait(2)
+                        continue
+                    end
+                else
+                    Status.Text = "Failed to get AUG"
+                    Kamaik.AutoFarm.lastTarget = nil
+                    task.wait(5)
+                    continue
+                end
+            end
+            
+            --  VERIFICAR MUNICIÓN CON EL ARMA EQUIPADA
+            task.wait(0.3) -- Pequeña pausa para asegurar que el arma está equipada
+            local balas = obtenerBalas()
+            if not balas or balas <= 0 then
+                Status.Text = "No ammo - triggering reload..."
+                --  FORZAR RELOAD INMEDIATO
+                recargar()
+                task.wait(2)
+                
+                -- Verificar si se recargó
+                local nuevasBalas = obtenerBalas()
+                if not nuevasBalas or nuevasBalas <= 0 then
+                    Status.Text = "Reload failed - buying ammo..."
+                    comprarAmmo()
+                    task.wait(3)
+                    recargar()
+                    task.wait(1)
+                end
+                
+                -- Verificar una vez más
+                local balasFinales = obtenerBalas()
+                if not balasFinales or balasFinales <= 0 then
+                    Status.Text = "Critical: No ammo available"
+                    Kamaik.AutoFarm.lastTarget = nil
+                    task.wait(5)
+                    continue
+                end
+            end
+            
+            Status.Text = "Shooting ATM"
+            detectadoDano = superDisparo(target)
+            
+            --  VERIFICAR SI EL TARGET SIGUE SIENDO VÁLIDO DESPUÉS DEL DISPARO
+            if not target or not target.Parent or not target:FindFirstChild("Humanoid") then
+                Status.Text = "Target became invalid"
+                Kamaik.AutoFarm.lastTarget = nil
+                continue
+            end
+            
+            muerto = (target.Humanoid.Health <= 0)
+
+            if not detectadoDano then
+                Status.Text = "ATM Mission Failed - no damage detected"
+                task.spawn(function() SacarBlacklist(target) end) 
+                Kamaik.AutoFarm.lastTarget = nil
+                continue
+            end
+
+            if not muerto then
+                Status.Text = "ATM Mission Failed - target survived"
+                task.spawn(function() SacarBlacklist(target) end)
+                Kamaik.AutoFarm.lastTarget = nil
+                continue
+            end
+            
+            Status.Text = "ATM eliminated successfully"
+        end
 
             -- Esperar drops de dinero
             local dropFolder = Workspace:WaitForChild("Ignored"):WaitForChild("Drop")
