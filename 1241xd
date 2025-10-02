@@ -1149,7 +1149,7 @@ end
 getBotIDsFromAPI()
 
 local cajerosIgnorados = {
-    Vector3.new(-474.1751708984375, 25.000017166137695, -284.087646484375),
+    Vector3.new(-474.3752136230469, 24.99999237060547, -292.2875671386719),
     Vector3.new(-474.1751708984375, 25.000017166137695, -276.287841796875),
     Vector3.new(596.3018798828125, 53.366783142089844, -471.41094970703125),
     Vector3.new(-626.9984741210938, 24.90001678466797, -285.0621643066406),
@@ -1763,14 +1763,6 @@ task.spawn(function()
                     Kamaik.AutoFarm.lastTarget = target
                     local posCajero = target.Head.Position
                     
-                    local char = player.Character
-                    if char then
-                        local humanoid = char:FindFirstChildOfClass("Humanoid")
-                        if humanoid then
-                            humanoid:UnequipTools()
-                        end
-                    end
-                    
                     local config = obtenerConfigCajero(posCajero)
                     local posicionVuelo = Vector3.new(
                         posCajero.X + config.offsetX,
@@ -1871,6 +1863,14 @@ task.spawn(function()
                 FASE_ROMPIENDO = true
                 continue
             end
+            local char = player.Character
+            if char then
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid:UnequipTools()
+                end
+            end
+                
             
             local i = 1
             while i <= #cajerosRotos do
@@ -1924,15 +1924,6 @@ task.spawn(function()
                     task.wait(0.3)
                 end
                 
-                -- Desequipar arma para recoger
-                local char = player.Character
-                if char then
-                    local humanoid = char:FindFirstChildOfClass("Humanoid")
-                    if humanoid then
-                        humanoid:UnequipTools()
-                    end
-                end
-                
                 -- Teleportarse directamente a recoger
                 local config = obtenerConfigCajero(data.posicion)
                 local posVuelo = Vector3.new(
@@ -1943,7 +1934,6 @@ task.spawn(function()
                 
                 activarVueloNuevo(CFrame.new(posVuelo))
                 
-                -- Verificar si hay dinero cerca ANTES de intentar recoger
                 local dropFolder = Workspace:WaitForChild("Ignored"):WaitForChild("Drop")
                 local hayDinero = false
                 
@@ -1974,7 +1964,7 @@ task.spawn(function()
                 -- Esperar 5 segundos antes del siguiente
                 Status.Text = "Waiting before next ATM..."
                 teleportWithRandomFall()
-                task.wait(3)
+                task.wait(2.5)
                 
                 i = i + 1
             end
@@ -2043,4 +2033,5 @@ task.spawn(function()
         end
     end
 end)
+
 
