@@ -7,6 +7,7 @@ return {
   ["Solara"] = true,
   ["Delta"] = true,
   ["Wave"] = true,
+  ["Seliware"] = true,
   ["Bunni"] = true,
   ["Zenith"] = true,
 }
