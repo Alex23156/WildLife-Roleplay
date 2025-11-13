@@ -10,4 +10,5 @@ return {
   ["Seliware"] = true,
   ["Bunni"] = true,
   ["Zenith"] = true,
+  ["Arceus X"] = true,
 }
