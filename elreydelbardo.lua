@@ -11,4 +11,5 @@ return {
   ["Bunni"] = true,
   ["Zenith"] = true,
   ["Arceus X"] = true,
+  ["Xeno"] = true,
 }
