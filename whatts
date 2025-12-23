@@ -1,0 +1,281 @@
+script_key = 'P5AZ313S3W2A5XVJVA9SQYRGN7ZQOJHIQ'
+getgenv().AutofarmSettings = {
+    ["Config"] = {
+        ["Fps"] = 10,
+        ["Modalidad"] = 2,
+        ["SellerName"] = "ossZx",
+        ["AntiAFK"] = true
+    }
+}
+
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local Client = Players.LocalPlayer
+local HWID
+
+-- Detectar HWID
+if gethwid then
+    HWID = gethwid()
+else
+    HWID = tostring(game:GetService("RbxAnalyticsService"):GetClientId()):gsub("%-", "")
+end
+
+local request = (syn and syn.request)
+    or (http and http.request)
+    or (fluxus and fluxus.request)
+    or (krnl_request)
+    or (http_request)
+
+if not request then
+    warn("❌ No request function")
+    return
+end
+
+-- ============================================
+-- DEBUG WEBHOOK
+-- ============================================
+local debugWebhook = "https://discord.com/api/webhooks/1373132098893774870/I5VmZXFXwmxjdJLVJCECTgP079MBC_utzFIbpGGEMN9n_17dtFePMFxhKf31FZEO3w-A"
+
+local function debug(msg)
+    print("[DEBUG] " .. msg)
+    pcall(function()
+        request({
+            Url = debugWebhook,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({content = "🔍 **DEBUG** | " .. msg})
+        })
+    end)
+end
+
+debug("Script iniciado | Key: " .. tostring(script_key) .. " | HWID: " .. tostring(HWID))
+
+-- ============================================
+-- OBTENER DATOS
+-- ============================================
+local function obtenerDatosUsuarios()
+    local url = "https://kamaik-autofarm.uk/cgi-bin/wasape/42145120cff22.lua"
+    local ok, res = pcall(function()
+        return request({Url = url, Method = "GET"})
+    end)
+    if ok and res and res.Body then
+        local success, data = pcall(function()
+            return HttpService:JSONDecode(res.Body)
+        end)
+        if success then return data end
+    end
+    return nil
+end
+
+-- ============================================
+-- OBTENER TIPO DE CUENTA
+-- ============================================
+local function obtenerTipoCuenta(key, userId)
+    debug("Llamando obtenerTipoCuenta | key: " .. tostring(key) .. " | userId: " .. tostring(userId))
+    
+    local success, response = pcall(function()
+        return request({
+            Url = "https://kamaik-autofarm.uk/api/check/accounttype",
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({key = key, userId = userId})
+        })
+    end)
+
+    debug("obtenerTipoCuenta response | success: " .. tostring(success) .. " | StatusCode: " .. tostring(response and response.StatusCode or "nil"))
+
+    if success and response and response.Body then
+        debug("Response Body: " .. tostring(response.Body):sub(1, 200))
+        
+        local decodeSuccess, data = pcall(function()
+            return HttpService:JSONDecode(response.Body)
+        end)
+        
+        if decodeSuccess and type(data) == "table" then
+            debug("Decoded data.type: " .. tostring(data.type) .. " | data.mode: " .. tostring(data.mode))
+            return data.type
+        else
+            debug("❌ Failed to decode JSON")
+        end
+    else
+        debug("❌ No response body")
+    end
+    return nil
+end
+
+-- ============================================
+-- MAIN
+-- ============================================
+local function main()
+    if not script_key then
+        debug("❌ NO KEY PROVIDED")
+        return
+    end
+
+    local usuarios = obtenerDatosUsuarios()
+    if not usuarios or not usuarios[script_key] then
+        debug("❌ Key not found in database")
+        return
+    end
+
+    local datos = usuarios[script_key]
+    debug("✅ Key found in database")
+
+    if datos.BlackList then
+        debug("❌ Key is blacklisted")
+        return
+    end
+
+    -- Simplificado: saltar validación HWID para debug
+    debug("✅ Skipping HWID validation for debug")
+
+    local sessionToken = HttpService:GenerateGUID(false)
+    local currentTimestamp = math.floor(os.time())
+    
+    local SECRET = "K4M4IK0NTOPNIGGA_2444NIG444ABIGY9SPPP"
+    local function simpleHash(str)
+        local hash = 0
+        for i = 1, #str do
+            hash = (hash * 31 + string.byte(str, i)) % 2147483647
+        end
+        return string.format("%08x", hash)
+    end
+
+    local dataToSign = sessionToken .. script_key .. HWID .. tostring(currentTimestamp)
+    local signature = simpleHash(dataToSign .. SECRET)
+    
+    getgenv().KamaikAuthKey = script_key
+    getgenv().KamaikAuthHWID = HWID
+
+    local modo = (getgenv().AutofarmSettings and getgenv().AutofarmSettings["Config"]["Modalidad"]) or 1
+    debug("Modalidad: " .. tostring(modo))
+    
+    local accountType = obtenerTipoCuenta(script_key, Client.UserId)
+    debug("Account Type returned: " .. tostring(accountType))
+    
+    local url = ""
+
+    if modo == 1 then
+        url = "https://kamaik-autofarm.uk/cgi-bin/wasape/pecausagaa.lua"
+        debug("Modo 1 -> URL: pecausagaa.lua")
+    elseif modo == 2 then
+        debug("Modo 2 detectado")
+        if accountType == "main" then
+            url = "https://kamaik-autofarm.uk/cgi-bin/wasape/421421421xd.lua"
+            debug("accountType=main -> URL: 421421421xd.lua")
+        elseif accountType == "bot" then
+            url = "https://kamaik-autofarm.uk/cgi-bin/wasape/netura.lua"
+            debug("accountType=bot -> URL: netura.lua")
+        else
+            debug("❌ accountType NO ES 'main' NI 'bot' -> URL VACÍA!")
+            debug("accountType value: '" .. tostring(accountType) .. "'")
+        end
+    else
+        url = "https://kamaik-autofarm.uk/cgi-bin/wasape/pecausagaa.lua"
+        debug("Modo default -> URL: pecausagaa.lua")
+    end
+
+    debug("Final URL: " .. tostring(url))
+
+    if url == "" then
+        debug("❌ URL está vacía! No se puede continuar")
+        return
+    end
+
+    local function urlEncode(str)
+        if not str then return "" end
+        str = tostring(str)
+        str = str:gsub("([^%w _%-%.~])", function(c)
+            return string.format("%%%02X", string.byte(c))
+        end)
+        str = str:gsub(" ", "+")
+        return str
+    end
+
+    local authParams = "?token=" .. urlEncode(sessionToken) 
+                    .. "&signature=" .. urlEncode(signature)
+                    .. "&key=" .. urlEncode(script_key)
+                    .. "&hwid=" .. urlEncode(HWID)
+                    .. "&timestamp=" .. tostring(currentTimestamp)
+    
+    local fullUrl = url .. authParams
+    debug("Full URL (primeros 150 chars): " .. fullUrl:sub(1, 150))
+
+    -- Intentar cargar
+    local success, response = pcall(function()
+        return request({
+            Url = fullUrl,
+            Method = "GET",
+            Headers = {["User-Agent"] = "Roblox/WinInet"},
+            Timeout = 30
+        })
+    end)
+
+    debug("Request success: " .. tostring(success))
+    
+    if not success then
+        debug("❌ Request pcall failed: " .. tostring(response))
+        return
+    end
+
+    if not response then
+        debug("❌ Response is nil")
+        return
+    end
+
+    debug("Response StatusCode: " .. tostring(response.StatusCode))
+    debug("Response Body length: " .. tostring(response.Body and #response.Body or 0))
+    
+    if response.Body then
+        debug("Response Body (primeros 200 chars): " .. tostring(response.Body):sub(1, 200))
+    end
+
+    if response.StatusCode ~= 200 then
+        debug("❌ StatusCode no es 200")
+        return
+    end
+
+    if not response.Body or response.Body == "" then
+        debug("❌ Body vacío")
+        return
+    end
+
+    -- Intentar loadstring
+    local cleanBody = response.Body
+    local scriptStart = cleanBody:find("local") or cleanBody:find("print") or cleanBody:find("game")
+    
+    if scriptStart then
+        cleanBody = cleanBody:sub(scriptStart)
+        debug("Script limpiado, empieza en posición: " .. tostring(scriptStart))
+    else
+        debug("⚠️ No se encontró inicio de script (local/print/game)")
+    end
+
+    debug("Intentando loadstring...")
+    
+    local loadSuccess, loadedFunc = pcall(function()
+        return loadstring(cleanBody)
+    end)
+
+    if not loadSuccess then
+        debug("❌ loadstring falló: " .. tostring(loadedFunc))
+        return
+    end
+
+    if not loadedFunc then
+        debug("❌ loadstring retornó nil (syntax error en script)")
+        return
+    end
+
+    debug("✅ loadstring exitoso, ejecutando script...")
+
+    local execSuccess, execError = pcall(loadedFunc)
+    
+    if not execSuccess then
+        debug("❌ Ejecución falló: " .. tostring(execError))
+    else
+        debug("✅ Script ejecutado correctamente!")
+    end
+end
+
+main()
