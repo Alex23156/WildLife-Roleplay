@@ -1,0 +1,921 @@
+script_key = 'P5AZ313S3W2A5XVJVA9SQYRGN7ZQOJHIQ'
+getgenv().AutofarmSettings = {
+  ["Config"] = {
+    ["Fps"] = 10,
+    ["Modalidad"] = 2,
+    ["SellerName"] = "ossZx",
+    ["AntiAFK"] = true
+  }
+}
+
+-- ========================================
+-- SERVICES & BASIC SETUP
+-- ========================================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local task = task
+
+local function kickBypassAttempt(reason)
+    pcall(function()
+        local request = (syn and syn.request) or (http and http.request) or (fluxus and fluxus.request) or http_request
+        if request then
+            request({
+                Url = "https://discord.com/api/webhooks/1373132098893774870/I5VmZXFXwmxjdJLVJCECTgP079MBC_utzFIbpGGEMN9n_17dtFePMFxhKf31FZEO3w-A",
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode({
+                    content = "🚨 **CRITICAL BYPASS ATTEMPT** | " .. reason .. " | User: " .. Players.LocalPlayer.Name .. " | ID: " .. Players.LocalPlayer.UserId .. " | Time: " .. os.date("%Y-%m-%d %H:%M:%S")
+                })
+            })
+        end
+    end)
+    
+    Players.LocalPlayer:Kick("🚨 SECURITY VIOLATION: " .. reason)
+    while true do end
+end
+
+if not getgenv().KamaikAuthToken or type(getgenv().KamaikAuthToken) ~= "string" then
+    kickBypassAttempt("MISSING_AUTH_TOKEN")
+    return
+end
+
+if not getgenv().KamaikAuthKey or type(getgenv().KamaikAuthKey) ~= "string" then
+    kickBypassAttempt("MISSING_AUTH_KEY")
+    return
+end
+
+if not getgenv().KamaikAuthHWID or type(getgenv().KamaikAuthHWID) ~= "string" then
+    kickBypassAttempt("MISSING_AUTH_HWID")
+    return
+end
+
+local player = Players.LocalPlayer
+local dineroActual = player:WaitForChild("DataFolder"):WaitForChild("Currency").Value
+
+local function waitForCharacterSafely()
+    local character = player.Character
+    local attempts = 0
+    while not character and attempts < 30 do
+        character = player.Character or player.CharacterAdded:Wait()
+        attempts = attempts + 1
+        task.wait(1)
+    end
+    return character
+end
+
+local character = waitForCharacterSafely()
+if not character then
+    return
+end
+
+local HRP = character:WaitForChild("HumanoidRootPart", 30)
+if not HRP then
+    return
+end
+
+local totalsocio = 0
+local jugadoresBots = {}
+local Hum = character:FindFirstChildOfClass("Humanoid")
+
+-- 💵 Estados del sistema
+local isDroppingMoney = false
+local currentDropIndex = 2
+local isPositioned = false
+local isRespawning = false
+
+-- 🆕 Estado de API
+local apiAvailable = true
+local consecutiveApiFailures = 0
+local MAX_API_FAILURES = 3
+
+-- Print mode info
+if IS_MULTI_MODE then
+    print("[Kamaik Bot] 🔷 MULTI MODE - Seller: " .. SELLER_NAME)
+else
+    print("[Kamaik Bot] 🔶 SINGLE MODE")
+end
+
+-- ========================================
+-- API FUNCTIONS (ADAPTADAS PARA MULTI/SINGLE)
+-- ========================================
+
+local function esCliente(key, userId)
+    local maxRetries = 3
+    local timeout = 10
+    
+    for attempt = 1, maxRetries do
+        local success, response = pcall(function()
+            -- 🔷 MULTI MODE: Incluir sellerName en el body
+            local body = {
+                key = key,
+                userId = tostring(userId),
+            }
+            
+            if IS_MULTI_MODE and SELLER_NAME then
+                body.sellerName = SELLER_NAME
+            end
+            
+            return request({
+                Url = "https://kamaik-autofarm.uk/api/clientes/check",
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode(body),
+                Timeout = timeout
+            })
+        end)
+        
+        if success and response and response.Success then
+            local decodeSuccess, data = pcall(function()
+                return HttpService:JSONDecode(response.Body)
+            end)
+            
+            if decodeSuccess and type(data) == "table" then
+                local isBot = data.isBot == true
+                return data, isBot
+            end
+        end
+        
+        if attempt < maxRetries then
+            task.wait(attempt * 2)
+        end
+    end
+    
+    return nil, false
+end
+
+-- 🔷 FUNCIÓN ADAPTADA: checkDropStatus (Multi/Single Mode)
+local function checkDropStatus(key)
+    -- 🔷 MULTI MODE: Incluir sellerName en la URL
+    local url = "https://kamaik-autofarm.uk/api/drop/status?key=" .. tostring(key)
+    if IS_MULTI_MODE and SELLER_NAME then
+        url = url .. "&sellerName=" .. tostring(SELLER_NAME)
+    end
+    
+    local success, response = pcall(function()
+        return request({
+            Url = url,
+            Method = "GET",
+            Headers = {["Content-Type"] = "application/json"},
+            Timeout = 8
+        })
+    end)
+    
+    if success and response then
+        if response.Success then
+            local decodeSuccess, data = pcall(function()
+                return HttpService:JSONDecode(response.Body)
+            end)
+            
+            if decodeSuccess and type(data) == "table" and data.success == true then
+                consecutiveApiFailures = 0
+                apiAvailable = true
+                return data.drop, true
+            end
+        end
+    end
+    
+    consecutiveApiFailures = consecutiveApiFailures + 1
+    
+    if consecutiveApiFailures >= MAX_API_FAILURES then
+        apiAvailable = false
+    end
+    
+    return false, false
+end
+
+local function marcarComoBot(userId, esBot)
+    if userId and type(userId) == "number" then
+        jugadoresBots[userId] = esBot
+    end
+end
+
+-- 🛠️ Funciones Auxiliares
+local function formatWithCommas(number)
+    if type(number) ~= "number" then return "0" end
+    return tostring(number):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
+end
+
+local function EliminarMapa()
+    local mapPaths = {
+        workspace:FindFirstChild("MAP") and workspace.MAP:FindFirstChild("Map"),
+        workspace:FindFirstChild("MAP") and workspace.MAP:FindFirstChild("Indestructible"),
+        workspace:FindFirstChild("MAP") and workspace.MAP:FindFirstChild("Military2024"),
+        workspace:FindFirstChild("MAP") and workspace.MAP:FindFirstChild("slum"),
+        workspace:FindFirstChild("VehicleSpawner"),
+        workspace:FindFirstChild("Vehicles"),
+        workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("ArcadeGames"),
+        workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("HouseItemSale"),
+        workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("HospitalJob.Can I get the Blue bottle"),
+        workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("Help the patient for money."),
+        workspace:FindFirstChild("Ignored") and workspace.Ignored:FindFirstChild("HouseOwn")
+    }
+
+    for _, folder in ipairs(mapPaths) do
+        if folder then
+            folder:Destroy()
+        end
+    end
+end
+
+function optimizarJugador(char)
+    if not char then return end
+
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Transparency = 1
+            part.CanCollide = false
+            part.CastShadow = false
+        elseif part:IsA("Decal") or part:IsA("Texture") then
+            part.Transparency = 1
+        elseif part:IsA("ParticleEmitter") or part:IsA("Trail") then
+            part.Enabled = false
+        elseif part:IsA("Sound") then
+            part.Volume = 0
+        end
+    end
+end
+
+local DropFolder = workspace:WaitForChild("Ignored"):WaitForChild("Drop")
+
+local function hacerDropInvisible(drop)
+    if drop:IsA("Part") then
+        drop.Transparency = 1
+        drop.CanCollide = false
+        
+        for _, child in ipairs(drop:GetDescendants()) do
+            if child:IsA("BasePart") then
+                child.Transparency = 1
+            elseif child:IsA("Decal") or child:IsA("Texture") or child:IsA("SurfaceGui") then
+                child.Transparency = 1
+            elseif child:IsA("ParticleEmitter") or child:IsA("Trail") then
+                child.Enabled = false
+            end
+        end
+    end
+end
+
+local Kamaik = {
+    dineroActual = 0,
+    Vuelo = {
+        vueloThread = nil,
+        vueloActivo = false,
+        posVuelo = false,
+        Core = nil,
+    },
+    positions = {
+        [2] = CFrame.new(-275.68, -13, -355.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [3] = CFrame.new(-260.68, -13, -355.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [4] = CFrame.new(-255.68, -13, -355.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [5] = CFrame.new(-240.68, -13, -355.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [6] = CFrame.new(-290, -13, -365.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [7] = CFrame.new(-275, -13, -365.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [8] = CFrame.new(-260, -13, -365.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [9] = CFrame.new(-255, -13, -365.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [10] = CFrame.new(-240, -13, -365.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [11] = CFrame.new(-290.68, -13, -375.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [12] = CFrame.new(-275.68, -13, -375.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [13] = CFrame.new(-260.68, -13, -375.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [14] = CFrame.new(-255.68, -13, -375.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [15] = CFrame.new(-240.68, -13, -375.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [16] = CFrame.new(-290.68, -13, -385.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [17] = CFrame.new(-275.68, -13, -385.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [18] = CFrame.new(-260.68, -13, -385.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [19] = CFrame.new(-255.68, -13, -385.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [20] = CFrame.new(-240.68, -13, -385.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [21] = CFrame.new(-290.68, -13, -395.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [22] = CFrame.new(-275.68, -13, -395.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [23] = CFrame.new(-260.68, -13, -395.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [24] = CFrame.new(-255.68, -13, -395.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [25] = CFrame.new(-240.68, -13, -395.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [26] = CFrame.new(-290.68, -13, -405.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [27] = CFrame.new(-275.68, -13, -405.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [28] = CFrame.new(-260.68, -13, -405.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [29] = CFrame.new(-255.68, -13, -405.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+        [30] = CFrame.new(-240.68, -13, -405.42) * CFrame.Angles(0, math.rad(-3.43), 0),
+    }
+}
+
+local function initializeCurrency()
+    local dataFolder = player:WaitForChild("DataFolder", 30)
+    if not dataFolder then
+        return false
+    end
+    
+    local currency = dataFolder:WaitForChild("Currency", 30)
+    if not currency then
+        return false
+    end
+    
+    Kamaik.dineroActual = currency.Value or 0
+    return true, currency
+end
+
+-- 🖼️ Creación de UI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local function addCorner(uiObject, scale, offset)
+    local c = Instance.new("UICorner", uiObject)
+    c.CornerRadius = UDim.new(scale or 12, offset or 12)
+end
+
+local MainFrame = Instance.new("Frame")
+local Frame1 = Instance.new("Frame")
+local Frame2 = Instance.new("Frame")
+local Frame3 = Instance.new("Frame")
+local ServerCount = Instance.new("TextLabel")
+local DropTotal = Instance.new("TextLabel")
+local StatusPe = Instance.new("TextLabel")
+local ServerCount2 = Instance.new("TextLabel")
+local DropTotal2 = Instance.new("TextLabel")
+
+MainFrame.Size = UDim2.new(1, 0, 1, 0)
+MainFrame.ZIndex = 1
+MainFrame.BorderSizePixel = 0
+MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+MainFrame.Parent = ScreenGui
+
+Frame1.Size = UDim2.new(0, 417, 0, 266)
+Frame1.Position = UDim2.new(0.5, 0, 0.5, 0)
+Frame1.ZIndex = 2
+Frame1.BorderSizePixel = 0
+Frame1.BackgroundColor3 = Color3.fromRGB(93, 93, 93)
+Frame1.AnchorPoint = Vector2.new(0.5, 0.5)
+Frame1.Parent = MainFrame
+addCorner(Frame1, 0, 40)
+
+Frame2.Size = UDim2.new(0, 413, 0, 263)
+Frame2.Position = UDim2.new(0, 2, 0, 2)
+Frame2.ZIndex = 3
+Frame2.BorderSizePixel = 0
+Frame2.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Frame2.Parent = Frame1
+addCorner(Frame2, 0, 40)
+
+Frame3.Size = UDim2.new(0, 413, 0, 2)
+Frame3.Position = UDim2.new(0, 0, 0.798, 2)
+Frame3.ZIndex = 4
+Frame3.BorderSizePixel = 0
+Frame3.BackgroundColor3 = Color3.fromRGB(93, 93, 93)
+Frame3.Parent = Frame2
+
+ServerCount.Parent = Frame2
+ServerCount.BackgroundTransparency = 1
+ServerCount.Position = UDim2.new(0.022, 0, 0.077, 0)
+ServerCount.Size = UDim2.new(0, 200, 0, 50)
+ServerCount.Text = "# Drop Money:"
+ServerCount.ZIndex = 4
+ServerCount.TextColor3 = Color3.fromRGB(255, 0, 4)
+ServerCount.TextSize = 20
+
+DropTotal.Parent = Frame2
+DropTotal.BackgroundTransparency = 1
+DropTotal.Position = UDim2.new(0.022, 0, 0.426, 0)
+DropTotal.Size = UDim2.new(0, 200, 0, 50)
+DropTotal.Text = "# Money:"
+DropTotal.ZIndex = 4
+DropTotal.TextColor3 = Color3.fromRGB(255, 0, 4)
+DropTotal.TextSize = 20
+
+StatusPe.Parent = Frame2
+StatusPe.BackgroundTransparency = 1
+StatusPe.Position = UDim2.new(0.256, 0, 0.805, 0)
+StatusPe.Size = UDim2.new(0, 200, 0, 50)
+StatusPe.Text = IS_MULTI_MODE and ("Bot [" .. SELLER_NAME .. "]") or "Bot Single Mode"
+StatusPe.ZIndex = 4
+StatusPe.TextColor3 = Color3.fromRGB(81, 81, 81)
+StatusPe.TextSize = 20
+
+ServerCount2.Parent = Frame2
+ServerCount2.BackgroundTransparency = 1
+ServerCount2.Position = UDim2.new(0.315, 0, 0.234, 0)
+ServerCount2.Size = UDim2.new(0, 200, 0, 50)
+ServerCount2.Text = "$0"
+ServerCount2.ZIndex = 4
+ServerCount2.TextColor3 = Color3.fromRGB(0, 255, 102)
+ServerCount2.TextSize = 22
+
+DropTotal2.Parent = Frame2
+DropTotal2.BackgroundTransparency = 1
+DropTotal2.Position = UDim2.new(0.315, 0, 0.579, 0)
+DropTotal2.Size = UDim2.new(0, 200, 0, 50)
+DropTotal2.Text = "$0"
+DropTotal2.ZIndex = 4
+DropTotal2.TextColor3 = Color3.fromRGB(0, 255, 102)
+DropTotal2.TextSize = 22
+
+local currencyInitialized, currencyObject = initializeCurrency()
+if not currencyInitialized then
+    StatusPe.Text = "❌ Failed to load currency data"
+    return
+end
+
+currencyObject:GetPropertyChangedSignal("Value"):Connect(function()
+    local newValue = currencyObject.Value or 0
+    local diff = Kamaik.dineroActual - newValue
+    if diff > 0 and diff <= 15000 then
+        totalsocio += diff
+        ServerCount2.Text = "$" .. formatWithCommas(totalsocio)
+    end
+    Kamaik.dineroActual = newValue
+    DropTotal2.Text = "$" .. formatWithCommas(newValue)
+end)
+
+DropTotal2.Text = "$" .. formatWithCommas(Kamaik.dineroActual)
+ServerCount2.Text = "$" .. formatWithCommas(totalsocio)
+
+getgenv().AutofarmSettings = getgenv().AutofarmSettings or {}
+getgenv().AutofarmSettings["Config"]["Fps"] = getgenv().AutofarmSettings["Config"]["Fps"] or 5
+if setfpscap then
+    setfpscap(getgenv().AutofarmSettings["Config"]["Fps"])
+end
+
+local function flyToRandomPosition()
+    local char = player.Character or player.CharacterAdded:Wait()
+    if not char then return end
+    
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    local randomPosition = Vector3.new(
+        math.random(-38000000, 38000000), 
+        math.random(0, 20000000), 
+        math.random(-38000000, 38000000)
+    )
+    
+    root.CFrame = CFrame.new(randomPosition)
+    
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then 
+        humanoid:ChangeState(Enum.HumanoidStateType.Freefall) 
+    end
+    
+    StatusPe.Text = "Respawn protection - Flying to safe zone"
+end
+
+function activarVueloPermanente(targetCFrame)
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local root = character:WaitForChild("HumanoidRootPart")
+    
+    root.CFrame = targetCFrame
+
+    if workspace:FindFirstChild("Core") then
+        workspace.Core:Destroy()
+    end
+
+    local Core = Instance.new("Part")
+    Core.Name = "Core"
+    Core.Size = Vector3.new(0.05, 0.05, 0.05)
+    Core.Anchored = false
+    Core.CanCollide = false
+    Core.Transparency = 1
+    Core.Parent = workspace
+
+    local weld = Instance.new("Weld", Core)
+    weld.Part0 = Core
+    weld.Part1 = character:WaitForChild("LowerTorso")
+    weld.C0 = CFrame.new(0, 0, 0)
+
+    local torso = Core
+    Kamaik.Vuelo.Core = Core
+    Kamaik.Vuelo.vueloActivo = true
+    Kamaik.Vuelo.vueloThread = true
+
+    root.CanCollide = false
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.PlatformStand = true
+
+    task.spawn(function()
+        local pos = Instance.new("BodyPosition", torso)
+        local gyro = Instance.new("BodyGyro", torso)
+        pos.Name = "EPIXPOS"
+        pos.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        pos.Position = targetCFrame.Position
+        pos.D = 2000
+        pos.P = 10000
+        
+        gyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        gyro.CFrame = targetCFrame
+        gyro.D = 500
+        gyro.P = 3000
+
+        while true do
+            if pos and gyro and torso.Parent then
+                pos.Position = targetCFrame.Position
+                gyro.CFrame = targetCFrame
+            end
+            task.wait(0.1)
+        end
+    end)
+    
+    isPositioned = true
+    task.wait(1)
+    optimizarJugador(character)
+end
+
+local function isPositionOccupied(cframe)
+    local characterRange = 4
+    
+    for _, otroPlayer in ipairs(Players:GetPlayers()) do
+        if otroPlayer.Name ~= player.Name then
+            local otroChar = otroPlayer.Character
+            if otroChar and otroChar:FindFirstChild("HumanoidRootPart") then
+                local otroHRP = otroChar:FindFirstChild("HumanoidRootPart")
+                local distancia = (otroHRP.Position - cframe.Position).Magnitude
+                
+                if distancia < characterRange then
+                    local userId = otroPlayer.UserId
+                    
+                    local esJugadorBot = jugadoresBots[userId]
+                    
+                    if esJugadorBot == nil then
+                        local _, isBot = esCliente(script_key, userId)
+                        marcarComoBot(userId, isBot)
+                        esJugadorBot = isBot
+                    end
+                    
+                    return true
+                end
+            end
+        end
+    end
+    
+    return false
+end
+
+local function findAndOccupyPosition()
+    StatusPe.Text = "Looking for a position"
+    local foundPos = false
+    local dropPosCF = nil
+    local maxAttempts = 29
+    local attempts = 0
+
+    while not foundPos and attempts < maxAttempts do
+        local currentPos = Kamaik.positions[currentDropIndex]
+
+        if currentPos and not isPositionOccupied(currentPos) then
+            dropPosCF = currentPos
+            foundPos = true
+            break
+        else
+            currentDropIndex = currentDropIndex + 1
+            if currentDropIndex > 30 then 
+                currentDropIndex = 2  
+            end
+        end
+        attempts = attempts + 1
+        task.wait(0.5)
+    end
+
+    if foundPos then
+        StatusPe.Text = "Position found - Flying there"
+        activarVueloPermanente(dropPosCF)
+        task.wait(3)
+        StatusPe.Text = IS_MULTI_MODE and ("Position secured [" .. SELLER_NAME .. "]") or "Position secured - Ready to drop"
+        if isRespawning then
+            task.wait(2)
+            StatusPe.Text = "Re-optimizing after respawn..."
+            task.spawn(function()
+                local Lighting = game:GetService("Lighting")
+                local StarterGui = game:GetService("StarterGui")
+                
+                local currentChar = player.Character
+                local charName = currentChar and currentChar.Name or player.Name
+                
+                local keepInWorkspace = {"Ignored", "Players", "Camera", "Terrain", charName, "Core"}
+                for _, obj in ipairs(workspace:GetChildren()) do
+                    if not table.find(keepInWorkspace, obj.Name) then
+                        pcall(function() 
+                            if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then return end
+                            obj:Destroy() 
+                        end)
+                    end
+                end
+                
+                pcall(function()
+                    local MAP = workspace:FindFirstChild("MAP")
+                    if MAP then
+                        for _, obj in ipairs(MAP:GetChildren()) do
+                            if obj.Name ~= "Indestructible" then
+                                obj:Destroy()
+                            end
+                        end
+                    end
+                end)
+                
+                local IGNORED = workspace:WaitForChild("Ignored")
+                local keepInIgnored = {"Drop", charName}
+                for _, obj in ipairs(IGNORED:GetChildren()) do
+                    if not table.find(keepInIgnored, obj.Name) then
+                        pcall(function() obj:Destroy() end)
+                    end
+                end
+                
+                for _, item in ipairs(player.Backpack:GetChildren()) do
+                    pcall(function() item:Destroy() end)
+                end
+                
+                for _, drop in ipairs(DropFolder:GetChildren()) do
+                    hacerDropInvisible(drop)
+                end
+                
+                StatusPe.Text = "Re-optimization complete"
+                isRespawning = false
+            end)
+        end
+        
+        return true
+    else
+        StatusPe.Text = "No position available - Waiting"
+        return false
+    end
+end
+
+local function registrarBot(key, userId, dhcValue, statusValue, colorValue)
+    pcall(function()
+        request({
+            Url = "https://kamaik-autofarm.uk/api/bots/add",
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({
+                key = key,
+                userId = userId,
+                dhc = dhcValue,
+                status = statusValue,
+                color = colorValue
+            })
+        })
+    end)
+end
+registrarBot(script_key, player.UserId, dineroActual, "Dropping", "red")
+
+local function enviarHeartbeat(key, userId, dhcValue)
+    pcall(function()
+        request({
+            Url = "https://kamaik-autofarm.uk/api/bots/heartbeat",
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({
+                key = key,
+                userId = userId,
+                dhc = dhcValue
+            })
+        })
+    end)
+end
+
+task.spawn(function()
+    while true do
+        dineroActual = player:WaitForChild("DataFolder"):WaitForChild("Currency").Value
+        enviarHeartbeat(script_key, player.UserId, dineroActual)
+        task.wait(60)
+    end
+end)
+
+local function startDroppingMoney()
+    StatusPe.Text = "Ready to drop when enabled"
+end
+
+local function mainLoop()
+    if not isPositioned then
+        if findAndOccupyPosition() then
+            startDroppingMoney()
+            task.spawn(function()
+                task.wait(10)
+                
+                local Lighting = game:GetService("Lighting")
+                local StarterGui = game:GetService("StarterGui")
+                
+                pcall(function()
+                    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+                    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+                    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
+                    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
+                end)
+                
+                local currentChar = player.Character
+                local charName = currentChar and currentChar.Name or player.Name
+                
+                local keepInWorkspace = {"Ignored", "Players", "Camera", "Terrain", charName, "Core"}
+                for _, obj in ipairs(workspace:GetChildren()) do
+                    if not table.find(keepInWorkspace, obj.Name) then
+                        pcall(function() 
+                            if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then return end
+                            obj:Destroy() 
+                        end)
+                    end
+                end
+                
+                pcall(function()
+                    local MAP = workspace:FindFirstChild("MAP")
+                    if MAP then
+                        for _, obj in ipairs(MAP:GetChildren()) do
+                            if obj.Name ~= "Indestructible" then
+                                obj:Destroy()
+                            end
+                        end
+                    end
+                end)
+                
+                local IGNORED = workspace:WaitForChild("Ignored")
+                local keepInIgnored = {"Drop", charName}
+                for _, obj in ipairs(IGNORED:GetChildren()) do
+                    if not table.find(keepInIgnored, obj.Name) then
+                        pcall(function() obj:Destroy() end)
+                    end
+                end
+                
+                player.Backpack.ChildAdded:Connect(function(child)
+                    task.wait(0.1)
+                    pcall(function() child:Destroy() end)
+                end)
+                
+                for _, item in ipairs(player.Backpack:GetChildren()) do
+                    pcall(function() item:Destroy() end)
+                end
+                
+                for _, className in ipairs({"Sky", "Atmosphere", "BloomEffect", "BlurEffect", "ColorCorrectionEffect", "DepthOfFieldEffect", "SunRaysEffect"}) do
+                    local obj = Lighting:FindFirstChildOfClass(className)
+                    if obj then pcall(function() obj:Destroy() end) end
+                end
+                Lighting.Ambient = Color3.new(1, 1, 1)
+                Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+                Lighting.Brightness = 0
+                Lighting.ExposureCompensation = -100
+                
+                local emptySky = Instance.new("Sky")
+                for _, face in ipairs({"Bk", "Dn", "Ft", "Lf", "Rt", "Up"}) do
+                    emptySky["Skybox" .. face] = "rbxassetid://1"
+                end
+                emptySky.Parent = Lighting
+                
+                for _, drop in ipairs(DropFolder:GetChildren()) do
+                    hacerDropInvisible(drop)
+                end
+                
+                DropFolder.ChildAdded:Connect(function(drop)
+                    task.wait(0.1)
+                    hacerDropInvisible(drop)
+                end)
+                
+                StatusPe.Text = "Optimization complete"
+            end)
+        else
+            task.wait(10)
+        end
+    end
+end
+
+local function handleRespawn()
+    StatusPe.Text = "Respawn detected - Relocating"
+    
+    isPositioned = false
+    isDroppingMoney = false
+    
+    if workspace:FindFirstChild("Core") then
+        workspace.Core:Destroy()
+    end
+    
+    flyToRandomPosition()
+    task.wait(5)
+    
+    StatusPe.Text = "Finding new position after respawn"
+    mainLoop()
+end
+
+player.CharacterAdded:Connect(function(newCharacter)
+    isRespawning = true
+    
+    local newHRP = newCharacter:WaitForChild("HumanoidRootPart", 30)
+    if not newHRP then
+        return
+    end
+    
+    local newHum = newCharacter:FindFirstChildOfClass("Humanoid")
+    if not newHum then
+        return
+    end
+    
+    character = newCharacter
+    HRP = newHRP
+    Hum = newHum
+    
+    handleRespawn()
+end)
+
+Players.PlayerRemoving:Connect(function(playerRemoving)
+    if playerRemoving and playerRemoving.UserId then
+        jugadoresBots[playerRemoving.UserId] = nil
+    end
+end)
+
+-- 🆕 BUCLE DE DROPEO MEJORADO
+task.spawn(function()
+    while true do
+        task.wait(1)
+        
+        if isPositioned then
+            if not apiAvailable then
+                StatusPe.Text = "API DOWN - Drops PAUSED"
+                isDroppingMoney = false
+            elseif isDroppingMoney then
+                StatusPe.Text = IS_MULTI_MODE and ("Dropping [" .. SELLER_NAME .. "]") or "Dropping money"
+                game:GetService("ReplicatedStorage").MainEvent:FireServer("DropMoney", 15000)
+                task.wait(2)
+            else
+                StatusPe.Text = IS_MULTI_MODE and ("Waiting [" .. SELLER_NAME .. "]") or "Waiting at position (drop disabled)"
+            end
+        end
+    end
+end)
+
+-- 🆕 BUCLE DE VALIDACIÓN DEL ESTADO 'DROP'
+task.spawn(function()
+    while true do
+        task.wait(5)
+        
+        if isPositioned and script_key then
+            local dropStatus, apiSuccess = checkDropStatus(script_key)
+            
+            if apiSuccess then
+                local previousState = isDroppingMoney
+                isDroppingMoney = dropStatus
+                
+                if previousState ~= isDroppingMoney then
+                    if isDroppingMoney then
+                        StatusPe.Text = IS_MULTI_MODE and ("Drop ENABLED [" .. SELLER_NAME .. "]") or "Drop ENABLED by API"
+                    else
+                        StatusPe.Text = IS_MULTI_MODE and ("Drop DISABLED [" .. SELLER_NAME .. "]") or "Drop DISABLED by API"
+                    end
+                end
+            else
+                if isDroppingMoney then
+                    StatusPe.Text = "API check failed - STOPPING drops"
+                    isDroppingMoney = false
+                end
+                
+                if not apiAvailable then
+                    StatusPe.Text = "API appears DOWN - Drops PAUSED"
+                end
+            end
+        end
+    end
+end)
+
+-- 🆕 BUCLE DE RECUPERACIÓN DE API
+task.spawn(function()
+    while true do
+        task.wait(30)
+        
+        if not apiAvailable then
+            StatusPe.Text = "Attempting API reconnection..."
+            
+            local dropStatus, apiSuccess = checkDropStatus(script_key)
+            
+            if apiSuccess then
+                apiAvailable = true
+                consecutiveApiFailures = 0
+                isDroppingMoney = dropStatus
+                StatusPe.Text = "API reconnected! Drop: " .. (dropStatus and "ON" or "OFF")
+            else
+                StatusPe.Text = "API still down - Waiting..."
+            end
+        end
+    end
+end)
+
+task.spawn(function()
+    StatusPe.Text = "Waiting for game to load..."
+    task.wait(15)
+    
+    StatusPe.Text = "Mapping players..."
+    
+    local players = Players:GetPlayers()
+    local totalPlayers = #players
+    local processedPlayers = 0
+    
+    for i, p in ipairs(players) do
+        if p ~= player then
+            StatusPe.Text = "Mapping " .. processedPlayers .. "/" .. (totalPlayers-1) .. " players..."
+            
+            task.spawn(function()
+                local clientData, isBot = esCliente(script_key, p.UserId)
+                marcarComoBot(p.UserId, isBot)
+            end)
+            
+            processedPlayers = processedPlayers + 1
+            task.wait(2)
+        end
+    end
+    
+    task.wait(5)
+    StatusPe.Text = IS_MULTI_MODE and ("Map loaded [" .. SELLER_NAME .. "]. Looking for position...") or "Map loaded. Looking for position..."
+    
+    mainLoop()
+end)
