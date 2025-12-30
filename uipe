@@ -35,10 +35,20 @@ function UILib:CreateUI(title)
     mainCorner.CornerRadius = UDim.new(0, 12)
     mainCorner.Parent = mainFrame
 
+    -- Gradiente negro arriba -> morado abajo
+    local bgGradient = Instance.new("UIGradient")
+    bgGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 18, 18)),      -- Negro arriba
+        ColorSequenceKeypoint.new(0.7, Color3.fromRGB(25, 10, 35)),    -- Transición
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 0, 80))        -- Morado abajo
+    })
+    bgGradient.Rotation = 90  -- De arriba hacia abajo
+    bgGradient.Parent = mainFrame
+
     local stroke = Instance.new("UIStroke", mainFrame)
-    stroke.Color = Color3.fromRGB(50, 50, 50)
-    stroke.Thickness = 1
-    stroke.Transparency = 0.45
+    stroke.Color = Color3.fromRGB(130, 0, 200)  -- Borde morado
+    stroke.Thickness = 1.2
+    stroke.Transparency = 0.3
 
     local shadow = Instance.new("ImageLabel")
     shadow.Name = "Shadow"
@@ -104,11 +114,28 @@ function UILib:CreateUI(title)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Size = UDim2.new(1, 0, 0, 50)
     titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextSize = 18
+    titleLabel.TextSize = 22
     titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     titleLabel.TextYAlignment = Enum.TextYAlignment.Center
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Position = UDim2.new(0, 16, 0, 4)
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Center  -- CENTRADO
+    titleLabel.Position = UDim2.new(0, 0, 0, 4)
+
+    -- Gradiente morado para el título
+    local titleGradient = Instance.new("UIGradient")
+    titleGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 0, 255)),    -- Morado claro
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(130, 0, 220)),  -- Morado medio
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 0, 180))      -- Morado oscuro
+    })
+    titleGradient.Rotation = 0
+    titleGradient.Parent = titleLabel
+
+    -- Efecto Neon/Glow para el título
+    local titleStroke = Instance.new("UIStroke")
+    titleStroke.Parent = titleLabel
+    titleStroke.Color = Color3.fromRGB(180, 0, 255)
+    titleStroke.Thickness = 1.5
+    titleStroke.Transparency = 0.3
 
     local divider = Instance.new("Frame", mainFrame)
     divider.Size = UDim2.new(1, -32, 0, 1)
@@ -1961,3 +1988,4 @@ function UILib:AddKeybind(tab, text, callback, defaultKey)
 end
 
 return UILib
+
