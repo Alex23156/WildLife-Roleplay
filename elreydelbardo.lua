@@ -6,6 +6,7 @@ return {
   ["Codex"] = true,
   ["Solara"] = true,
   ["Delta"] = true,
+  ["Volt"] = true,
   ["Wave"] = true,
   ["Seliware"] = true,
   ["Bunni"] = true,
