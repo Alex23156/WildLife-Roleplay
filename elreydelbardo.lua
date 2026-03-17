@@ -8,6 +8,7 @@ return {
   ["Delta"] = true,
   ["Volt"] = true,
   ["Wave"] = true,
+  ["Nihon"] = true,
   ["Velocity"] = true,
   ["Seliware"] = true,
   ["Bunni"] = true,
