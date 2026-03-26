@@ -7,6 +7,7 @@ return {
   ["Solara"] = true,
   ["Delta"] = true,
   ["Volt"] = true,
+  ["MacSploit"] = true,
   ["Wave"] = true,
   ["Nihon"] = true,
   ["Velocity"] = true,
