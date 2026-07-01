@@ -6,6 +6,7 @@ return {
   ["Codex"] = true,
   ["Solara"] = true,
   ["Delta"] = true,
+  ["Cosmic"] = true,
   ["Volt"] = true,
   ["MacSploit"] = true,
   ["Wave"] = true,
