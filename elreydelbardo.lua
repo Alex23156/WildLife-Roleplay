@@ -8,6 +8,7 @@ return {
   ["Delta"] = true,
   ["Cosmic"] = true,
   ["Volt"] = true,
+  ["Synapse Z"] = true,
   ["MacSploit"] = true,
   ["Wave"] = true,
   ["Nihon"] = true,
